@@ -22,18 +22,10 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android Build Tools & Accept Licenses
-        run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" >/dev/null 2>&1 || true
-
       - name: Install Gradle 8.9
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip
-          sudo unzip -q gradle-8.9-bin.zip -d /opt
+          sudo unzip -q -o gradle-8.9-bin.zip -d /opt
           echo "/opt/gradle-8.9/bin" >> $GITHUB_PATH
 
       - name: Build APK
