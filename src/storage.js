@@ -100,6 +100,8 @@ const initialNotes = [
   }
 ];
 
+const initialScannedInvoices = [];
+
 export function getStoredData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -111,7 +113,8 @@ export function getStoredData() {
         transactions: initialTransactions,
         purchases: initialPurchases,
         inventory: initialInventory,
-        notes: initialNotes
+        notes: initialNotes,
+        scannedInvoices: initialScannedInvoices
       };
     }
     const parsed = JSON.parse(raw);
@@ -122,7 +125,8 @@ export function getStoredData() {
       transactions: parsed.transactions || [],
       purchases: parsed.purchases || [],
       inventory: parsed.inventory || initialInventory,
-      notes: parsed.notes || []
+      notes: parsed.notes || [],
+      scannedInvoices: parsed.scannedInvoices || []
     };
   } catch (e) {
     console.error('Error loading data', e);
@@ -133,7 +137,8 @@ export function getStoredData() {
       transactions: initialTransactions,
       purchases: initialPurchases,
       inventory: initialInventory,
-      notes: initialNotes
+      notes: initialNotes,
+      scannedInvoices: initialScannedInvoices
     };
   }
 }

@@ -7,15 +7,18 @@ import {
   Package, 
   BarChart3, 
   StickyNote,
-  History
+  History,
+  ScanLine
 } from 'lucide-react';
 
 export default function BottomNav({ currentScreen, setScreen, data }) {
   const lowStockCount = (data?.inventory || []).filter(i => (i.stock || 0) <= (i.minStock || 5)).length;
   const debtCustomersCount = (data?.customers || []).filter(c => (c.balance || 0) > 0).length;
+  const scannedInvoicesCount = (data?.scannedInvoices || []).length;
 
   const navItems = [
     { id: 'home', label: 'الرئيسية', icon: Home },
+    { id: 'scanner', label: 'ماسح الفواتير', icon: ScanLine, badge: scannedInvoicesCount > 0 ? scannedInvoicesCount : null },
     { id: 'invoice', label: 'فاتورة بيع', icon: Receipt },
     { id: 'invoices_history', label: 'سجل الفواتير', icon: History },
     { id: 'customers', label: 'العملاء والديون', icon: Users, badge: debtCustomersCount > 0 ? debtCustomersCount : null },

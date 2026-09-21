@@ -1,6 +1,6 @@
 {
   "name": "بقالة العنزي",
-  "description": "نظام فواتير المبيعات والمشتريات وإدارة العملاء والحسابات والمخزون لبقالة العنزي",
+  "description": "نظام فواتير المبيعات والمشتريات وإدارة العملاء والحسابات والماسح الضوئي الذكي للفواتير (CamScanner) لبقالة العنزي",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -15,7 +15,9 @@ import {
   ArrowUpRight,
   DollarSign,
   Phone,
-  Clock
+  Clock,
+  ScanLine,
+  Camera
 } from 'lucide-react';
 import { formatNumber, formatDate } from '../storage';
 import { shareViaWhatsApp, generateInvoiceShareText } from '../utils/sharing';
@@ -154,6 +156,14 @@ export default function HomeScreen({ data, setScreen, onSelectCustomer, onOpenRe
       </div>
 
       <div className="tiles-grid">
+        <div className="tile-btn" onClick={() => setScreen('scanner')} style={{ border: '1.5px solid #86efac', background: '#f0fdf4' }}>
+          <div className="tile-icon" style={{ background: '#dcfce7', color: '#15803d' }}>
+            <ScanLine size={26} />
+          </div>
+          <strong style={{ color: '#15803d' }}>ماسح الفواتير ⚡</strong>
+          <span>مسح واقتصاص ذكي كـ CamScanner</span>
+        </div>
+
         <div className="tile-btn" onClick={() => setScreen('invoice')}>
           <div className="tile-icon" style={{ background: '#ecfdf5', color: '#15803d' }}>
             <Receipt size={26} />

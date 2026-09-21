@@ -9,6 +9,7 @@ import PurchasesScreen from './components/PurchasesScreen';
 import InventoryScreen from './components/InventoryScreen';
 import ReportsScreen from './components/ReportsScreen';
 import NotesScreen from './components/NotesScreen';
+import ScannerScreen from './components/ScannerScreen';
 import ThermalReceiptModal from './components/ThermalReceiptModal';
 import BackupModal from './components/BackupModal';
 import { getStoredData, saveStoredData } from './storage';
@@ -311,6 +312,21 @@ export default function App() {
     }));
   };
 
+  // Scanned Invoices (invoices_images) Handlers
+  const handleSaveScannedInvoice = (scannedDoc) => {
+    setData((prev) => ({
+      ...prev,
+      scannedInvoices: [scannedDoc, ...(prev.scannedInvoices || [])]
+    }));
+  };
+
+  const handleDeleteScannedInvoice = (docId) => {
+    setData((prev) => ({
+      ...prev,
+      scannedInvoices: (prev.scannedInvoices || []).filter((d) => d.id !== docId)
+    }));
+  };
+
   // Store Settings & Backup
   const handleUpdateStoreInfo = (info) => {
     setData((prev) => ({
@@ -364,6 +380,15 @@ export default function App() {
               setCurrentScreen('customers');
             }}
             onOpenReceipt={(inv) => setReceiptToPreview(inv)}
+            showToast={showToast}
+          />
+        )}
+
+        {currentScreen === 'scanner' && (
+          <ScannerScreen
+            data={data}
+            onSaveScannedInvoice={handleSaveScannedInvoice}
+            onDeleteScannedInvoice={handleDeleteScannedInvoice}
             showToast={showToast}
           />
         )}

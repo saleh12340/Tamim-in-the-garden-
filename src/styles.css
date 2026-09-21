@@ -843,3 +843,42 @@ tr:hover td {
     padding: 0 !important;
   }
 }
+
+/* Scanner & Document Viewfinder Styles */
+.scanner-laser-line {
+  height: 2.5px;
+  background: linear-gradient(90deg, transparent 0%, #22c55e 50%, transparent 100%);
+  box-shadow: 0 0 12px #22c55e, 0 0 20px #4ade80;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  animation: scanLaser 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes scanLaser {
+  0% {
+    top: 5%;
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    top: 92%;
+    opacity: 0.8;
+  }
+}
+
+.scanner-viewfinder-overlay {
+  animation: viewfinderPulse 3s ease-in-out infinite;
+}
+
+@keyframes viewfinderPulse {
+  0%, 100% {
+    border-color: rgba(34, 197, 94, 0.7);
+  }
+  50% {
+    border-color: rgba(34, 197, 94, 1);
+  }
+}
+
