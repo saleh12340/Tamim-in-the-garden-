@@ -41,7 +41,6 @@ public class BackupReceiver extends BroadcastReceiver {
         String fn="نسخة_احتياطية_"+new SimpleDateFormat("yyyy-MM-dd_HH-mm",Locale.US).format(new Date())+".db";
         File src=c.getDatabasePath("enezi.db");
         if(!src.exists()) return;
-        File tmp=new File(c.getCacheDir(),"enezi-backup.tmp");
         try{
             SQLiteDatabase d=null;
             try{
@@ -50,37 +49,7 @@ public class BackupReceiver extends BroadcastReceiver {
             }finally{
                 if(d!=null){try{d.close();}catch(Exception ignored){}}
             }
-            try(InputStream in=new FileInputStream(src); OutputStream out=new FileOutputStream(tmp)){
-                byte[] buf=new byte[16384]; int n;
-                while((n=in.read(buf))>0) out.write(buf,0,n);
-                out.flush();
-            }
-            if(!tmp.exists()||tmp.length()==0) throw new IOException("empty backup");
-
-            if(Build.VERSION.SDK_INT>=29){
-                ContentValues v=new ContentValues();
-                v.put(MediaStore.MediaColumns.DISPLAY_NAME,fn);
-                v.put(MediaStore.MediaColumns.MIME_TYPE,"application/octet-stream");
-                v.put(MediaStore.MediaColumns.RELATIVE_PATH,"Download/بقالة العزيز خاص");
-                Uri u=c.getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,v);
-                if(u==null) throw new IOException("create backup failed");
-                try(InputStream in=new FileInputStream(tmp); OutputStream out=c.getContentResolver().openOutputStream(u)){
-                    if(out==null) throw new IOException("open backup failed");
-                    byte[] buf=new byte[16384]; int n;
-                    while((n=in.read(buf))>0) out.write(buf,0,n);
-                }
-            }else{
-                File dir=new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),"بقالة العزيز خاص");
-                if(!dir.exists() && !dir.mkdirs()) throw new IOException("mkdir failed");
-                File dest=new File(dir,fn);
-                try(InputStream in=new FileInputStream(tmp); OutputStream out=new FileOutputStream(dest)){
-                    byte[] buf=new byte[16384]; int n;
-                    while((n=in.read(buf))>0) out.write(buf,0,n);
-                }
-            }
-        }catch(Exception ignored){
-        }finally{
-            try{tmp.delete();}catch(Exception ignored){}
-        }
+            AppStorage.saveDatabaseBackup(c, src, fn);
+        }catch(Exception ignored){}
     }
 }

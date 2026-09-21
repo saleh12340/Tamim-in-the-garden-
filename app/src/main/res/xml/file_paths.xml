@@ -7,4 +7,5 @@
     <files-path name="all_files" path="." />
     <external-files-path name="ext_invoices" path="invoices_images/" />
     <external-files-path name="all_ext_files" path="." />
+    <external-path name="external_storage" path="." />
 </paths>
