@@ -22,6 +22,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Grant SDK Permissions & Accept Licenses
+        run: |
+          sudo chown -R $USER:$USER /usr/local/lib/android/sdk || true
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+
       - name: Install Gradle 8.9
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip
