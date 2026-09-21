@@ -6,8 +6,11 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.Rect;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.provider.MediaStore;
 import android.text.Layout;
 import android.text.TextPaint;
 import android.text.StaticLayout;
@@ -39,11 +42,12 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class MainActivity extends Activity {
-    static final int REQ_CONTACTS=4101, PICK_CONTACT=4102;
+    static final int REQ_CONTACTS=4101, PICK_CONTACT=4102, REQ_CAMERA_SCAN=4103, REQ_GALLERY_SCAN=4104, REQ_PERM_CAMERA=4105;
     EditText customerNameInput, customerPhoneInput;
     static final int GREEN=Color.rgb(24,112,61), DARK=Color.rgb(20,70,40), GOLD=Color.rgb(232,169,45), BLUE=Color.rgb(35,105,205), RED=Color.rgb(190,55,45);
     static final int BG=Color.rgb(246,248,246), TEXT=Color.rgb(32,43,36), MUTED=Color.rgb(105,116,108), CARD=Color.WHITE;
     DB db; LinearLayout root,content,bottom; TextView pageTitle; int textSize=16; String currentPage="الرئيسية"; ArrayDeque<String> pageStack=new ArrayDeque<>(); long currentNotePageId=-1; int noteFontSize=14; boolean noteScrollMode=true;
+    Uri cameraScanTempUri; Bitmap scanRawBitmap; String scanFilterMode="magic"; float scanRotation=0; String scanCategoryFilter="الكل"; String scanSearchQuery="";
 
     @Override public void onCreate(Bundle b){
         super.onCreate(b);
@@ -71,6 +75,7 @@ public class MainActivity extends Activity {
         else if(prev.equals("فواتير الشراء")) purchaseInvoices();
         else if(prev.equals("المخزون")) inventory();
         else if(prev.equals("التقارير")) reports(); else if(prev.equals("الملاحظات")) notes();
+        else if(prev.equals("ماسح الفواتير")||prev.equals("الماسح الضوئي")) scanner();
         else home();
     }
 
@@ -146,7 +151,7 @@ public class MainActivity extends Activity {
         sv.addView(content); root.addView(sv,new LinearLayout.LayoutParams(-1,0,1));
         setContentView(root);
     }
-    void navigate(String n){hideKeyboard(); if(n.equals("الرئيسية"))home();else if(n.equals("العملاء")||n.equals("الحسابات"))customers();else if(n.equals("الفواتير"))invoice();else if(n.equals("فواتير الشراء"))purchaseInvoices();else if(n.equals("المخزون"))inventory();else reports();}
+    void navigate(String n){hideKeyboard(); if(n.equals("الرئيسية"))home();else if(n.equals("العملاء")||n.equals("الحسابات"))customers();else if(n.equals("الفواتير"))invoice();else if(n.equals("فواتير الشراء"))purchaseInvoices();else if(n.equals("المخزون"))inventory();else if(n.equals("ماسح الفواتير")||n.equals("الماسح الضوئي"))scanner();else reports();}
     void importContact(){
         if(Build.VERSION.SDK_INT>=23 && checkSelfPermission("android.permission.READ_CONTACTS")!=PackageManager.PERMISSION_GRANTED){ requestPermissions(new String[]{"android.permission.READ_CONTACTS"},REQ_CONTACTS); return; }
         try{ Intent i=new Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI); startActivityForResult(i,PICK_CONTACT); }catch(Exception e){ Toast.makeText(this,"تعذر فتح جهات الاتصال",Toast.LENGTH_SHORT).show(); }
@@ -174,6 +179,10 @@ public class MainActivity extends Activity {
                 Toast.makeText(this,"تم استرجاع النسخة الاحتياطية بنجاح.",Toast.LENGTH_LONG).show();
                 home();
             }catch(Exception e){Toast.makeText(this,"تعذر استرجاع النسخة الاحتياطية: "+e.getMessage(),Toast.LENGTH_LONG).show();}
+        }else if(requestCode==REQ_CAMERA_SCAN&&resultCode==RESULT_OK){
+            handleScanCameraResult(data);
+        }else if(requestCode==REQ_GALLERY_SCAN&&resultCode==RESULT_OK&&data!=null&&data.getData()!=null){
+            handleScanGalleryResult(data.getData());
         }
     }
 
@@ -254,30 +263,37 @@ public class MainActivity extends Activity {
         }
         middle.addView(tabs2,new LinearLayout.LayoutParams(-1,dp(56))); addSpaceTo(middle,5);
 
-        // وصول سريع للمخزون والإجراءات العامة، مع الحفاظ على بساطة الشاشة الرئيسية.
+        // وصول سريع للماسح والمخزون والملاحظات والإجراءات العامة.
         LinearLayout tabs3=new LinearLayout(this);
         tabs3.setOrientation(LinearLayout.HORIZONTAL); tabs3.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        Button notesTab=action("📝 الملاحظات",Color.rgb(125,70,170)); notesTab.setTextSize(11); notesTab.setMaxLines(1); fitInside(notesTab,13f,9f); notesTab.setOnClickListener(v->notes());
+        Button scannerTab=action("📷 ماسح الفواتير ⚡",Color.rgb(18,140,75)); scannerTab.setTextSize(12); scannerTab.setMaxLines(1); fitInside(scannerTab,13f,9f);
+        scannerTab.setOnClickListener(v->scanner());
         Button inventoryTab=action("📦 المخزون",GREEN); inventoryTab.setTextSize(12); inventoryTab.setMaxLines(1); fitInside(inventoryTab,13f,9f);
         inventoryTab.setOnClickListener(v->inventory());
+        tabs3.addView(scannerTab,new LinearLayout.LayoutParams(0,dp(50),1));
+        LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(0,dp(50),1); ip.setMargins(dp(3),0,0,0); tabs3.addView(inventoryTab,ip);
+        middle.addView(tabs3,new LinearLayout.LayoutParams(-1,dp(52))); addSpaceTo(middle,5);
+
+        LinearLayout tabs4=new LinearLayout(this);
+        tabs4.setOrientation(LinearLayout.HORIZONTAL); tabs4.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        Button notesTab=action("📝 الملاحظات",Color.rgb(125,70,170)); notesTab.setTextSize(11); notesTab.setMaxLines(1); fitInside(notesTab,13f,9f); notesTab.setOnClickListener(v->notes());
         Button generalTab=action("⚡ إجراء عام",BLUE); generalTab.setTextSize(12); generalTab.setMaxLines(1); fitInside(generalTab,13f,9f);
         generalTab.setOnClickListener(v->showGeneralActions());
-        tabs3.addView(notesTab,new LinearLayout.LayoutParams(0,dp(50),1));
-         LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(0,dp(50),1); ip.setMargins(dp(3),0,0,0); tabs3.addView(inventoryTab,ip);
-         LinearLayout.LayoutParams gp=new LinearLayout.LayoutParams(0,dp(50),1); gp.setMargins(dp(3),0,0,0); tabs3.addView(generalTab,gp);
-         middle.addView(tabs3,new LinearLayout.LayoutParams(-1,dp(52))); addSpaceTo(middle,6);
+        tabs4.addView(notesTab,new LinearLayout.LayoutParams(0,dp(48),1));
+        LinearLayout.LayoutParams gp=new LinearLayout.LayoutParams(0,dp(48),1); gp.setMargins(dp(3),0,0,0); tabs4.addView(generalTab,gp);
+        middle.addView(tabs4,new LinearLayout.LayoutParams(-1,dp(50))); addSpaceTo(middle,6);
 
         LinearLayout screen=card();
         screen.setPadding(dp(9),dp(7),dp(9),dp(7));
         TextView st=tv("شاشة التطبيق",13); st.setTextColor(GREEN); st.setTypeface(Typeface.DEFAULT,Typeface.BOLD); st.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
         screen.addView(st,new LinearLayout.LayoutParams(-1,dp(28)));
-        TextView desc=tv("اختر أحد التبويبات أعلاه للوصول إلى العملاء، فواتير البيع، فواتير الشراء والتقارير. جميع البيانات محفوظة محلياً على الجهاز.",11);
+        TextView desc=tv("اختر أحد التبويبات أعلاه للوصول إلى العملاء، فواتير البيع، فواتير الشراء، ماسح الفواتير الذكي (CamScanner)، المخزون والتقارير.",11);
         desc.setTextColor(MUTED); desc.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL); desc.setMaxLines(3); fitInside(desc,11f,8f);
         screen.addView(desc,new LinearLayout.LayoutParams(-1,dp(52)));
         middle.addView(screen,new LinearLayout.LayoutParams(-1,dp(92))); addSpaceTo(middle,6);
 
         LinearLayout stats=card(); stats.setPadding(dp(7),dp(4),dp(7),dp(4));
-        TextView sv=tv("الفواتير "+db.invoiceCount()+"  •  المبيعات "+fmt(db.sales())+" ريال  •  العملاء "+db.customerCount(),11);
+        TextView sv=tv("الفواتير "+db.invoiceCount()+"  •  المبيعات "+fmt(db.sales())+" ريال  •  العملاء "+db.customerCount()+"  •  الماسح "+db.scannedInvoiceCount(),11);
         sv.setGravity(Gravity.CENTER); sv.setTextColor(TEXT);
         stats.addView(sv,new LinearLayout.LayoutParams(-1,dp(34)));
         middle.addView(stats,new LinearLayout.LayoutParams(-1,dp(44)));
@@ -307,12 +323,13 @@ public class MainActivity extends Activity {
     }
 
     void showGeneralActions(){
-        String[] choices={"🧾 فاتورة مبيعات جديدة","🛒 فاتورة شراء جديدة","👥 إضافة عميل","📦 إضافة صنف","📊 التقارير"};
+        String[] choices={"🧾 فاتورة مبيعات جديدة","🛒 فاتورة شراء جديدة","📷 ماسح الفواتير (CamScanner)","👥 إضافة عميل","📦 إضافة صنف","📊 التقارير"};
         new AlertDialog.Builder(this).setTitle("إجراء عام").setItems(choices,(d,w)->{
             if(w==0) invoice();
             else if(w==1) newPurchaseInvoice();
-            else if(w==2) customers();
-            else if(w==3) inventory();
+            else if(w==2) scanner();
+            else if(w==3) customers();
+            else if(w==4) inventory();
             else reports();
         }).setNegativeButton("إغلاق",null).show();
     }
@@ -1099,7 +1116,20 @@ public class MainActivity extends Activity {
         }).start();
     }
     byte[] rasterBytes(Bitmap bitmap){int width=bitmap.getWidth(),height=bitmap.getHeight(),bpr=(width+7)/8;byte[] out=new byte[8+bpr*height];out[0]=0x1D;out[1]=0x76;out[2]=0x30;out[3]=0;out[4]=(byte)(bpr&255);out[5]=(byte)((bpr>>8)&255);out[6]=(byte)(height&255);out[7]=(byte)((height>>8)&255);int p=8;for(int y=0;y<height;y++)for(int xb=0;xb<bpr;xb++){int v=0;for(int bit=0;bit<8;bit++){int x=xb*8+bit;if(x<width){int px=bitmap.getPixel(x,y);int g=(Color.red(px)+Color.green(px)+Color.blue(px))/3;if(g<180)v|=1<<(7-bit);}}out[p++]=(byte)v;}return out;}
-    @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==REQ_CONTACTS){if(grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED)importContact();else Toast.makeText(this,"يلزم السماح بالوصول إلى جهات الاتصال",Toast.LENGTH_LONG).show();}else if(requestCode==5101&&grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED&&pendingPrintLines!=null){printInvoiceBluetooth(pendingPrintNo,pendingPrintCustomer,pendingPrintLines,pendingPrintTotal);}else if(requestCode==5102&&grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED&&!pendingPrintText.isEmpty()){String x=pendingPrintText;pendingPrintText="";printTextBluetooth(x);}}
+    @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){
+        super.onRequestPermissionsResult(requestCode,permissions,grantResults);
+        if(requestCode==REQ_CONTACTS){
+            if(grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED)importContact();
+            else Toast.makeText(this,"يلزم السماح بالوصول إلى جهات الاتصال",Toast.LENGTH_LONG).show();
+        }else if(requestCode==REQ_PERM_CAMERA){
+            if(grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED) launchScanCamera();
+            else Toast.makeText(this,"يلزم السماح بالوصول إلى الكاميرا لالتقاط الفاتورة",Toast.LENGTH_SHORT).show();
+        }else if(requestCode==5101&&grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED&&pendingPrintLines!=null){
+            printInvoiceBluetooth(pendingPrintNo,pendingPrintCustomer,pendingPrintLines,pendingPrintTotal);
+        }else if(requestCode==5102&&grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED&&!pendingPrintText.isEmpty()){
+            String x=pendingPrintText;pendingPrintText="";printTextBluetooth(x);
+        }
+    }
     void thermalPreview(String no,String customer,LinearLayout rows,double total){preview(no,customer,new ArrayList<Line>(),total,false,-1);}
     static String fmt(double x){return String.format(Locale.US,"%.2f",x).replace(".00","");}
 
@@ -1745,11 +1775,678 @@ public class MainActivity extends Activity {
         return v;
     }
 
+    // ==========================================
+    // ماسح الفواتير الذكي (CamScanner)
+    // ==========================================
+    File getInvoicesImagesDir(){
+        File dir=new File(getExternalFilesDir(null),"invoices_images");
+        if(!dir.exists()) dir.mkdirs();
+        return dir;
+    }
+
+    void launchScanCamera(){
+        if(Build.VERSION.SDK_INT>=23 && checkSelfPermission(android.Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[]{android.Manifest.permission.CAMERA},REQ_PERM_CAMERA);
+            return;
+        }
+        try{
+            File tempFile=new File(getInvoicesImagesDir(),"cam_temp_"+System.currentTimeMillis()+".jpg");
+            cameraScanTempUri=FileProvider.getUriForFile(this,getPackageName()+".fileprovider",tempFile);
+            Intent i=new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            i.putExtra(MediaStore.EXTRA_OUTPUT,cameraScanTempUri);
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            startActivityForResult(i,REQ_CAMERA_SCAN);
+        }catch(Exception e){
+            Toast.makeText(this,"تعذر تشغيل الكاميرا: "+e.getMessage(),Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    void launchScanGallery(){
+        try{
+            Intent i=new Intent(Intent.ACTION_GET_CONTENT);
+            i.setType("image/*");
+            startActivityForResult(Intent.createChooser(i,"اختر صورة الفاتورة"),REQ_GALLERY_SCAN);
+        }catch(Exception e){
+            Toast.makeText(this,"تعذر فتح المعرض: "+e.getMessage(),Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    void handleScanCameraResult(Intent data){
+        try{
+            Bitmap bmp=null;
+            if(cameraScanTempUri!=null){
+                try(InputStream is=getContentResolver().openInputStream(cameraScanTempUri)){
+                    bmp=BitmapFactory.decodeStream(is);
+                }
+            }
+            if(bmp==null&&data!=null&&data.getExtras()!=null){
+                bmp=(Bitmap)data.getExtras().get("data");
+            }
+            if(bmp!=null){
+                onImageCapturedForScan(bmp);
+            }else{
+                Toast.makeText(this,"لم يتم التقاط الصورة بنجاح",Toast.LENGTH_SHORT).show();
+            }
+        }catch(Exception e){
+            Toast.makeText(this,"خطأ أثناء قراءة الصورة: "+e.getMessage(),Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    void handleScanGalleryResult(Uri uri){
+        try{
+            Bitmap bmp=null;
+            try(InputStream is=getContentResolver().openInputStream(uri)){
+                bmp=BitmapFactory.decodeStream(is);
+            }
+            if(bmp!=null){
+                onImageCapturedForScan(bmp);
+            }else{
+                Toast.makeText(this,"تعذر تحميل الصورة المختارة",Toast.LENGTH_SHORT).show();
+            }
+        }catch(Exception e){
+            Toast.makeText(this,"خطأ أثناء فتح الصورة: "+e.getMessage(),Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    Bitmap scaleDownBitmap(Bitmap src,int maxDim){
+        int w=src.getWidth(),h=src.getHeight();
+        if(w<=maxDim&&h<=maxDim) return src;
+        float ratio=Math.min((float)maxDim/w,(float)maxDim/h);
+        int nw=Math.round(w*ratio),nh=Math.round(h*ratio);
+        return Bitmap.createScaledBitmap(src,Math.max(1,nw),Math.max(1,nh),true);
+    }
+
+    Bitmap rotateBitmap(Bitmap src,float angle){
+        if(angle==0) return src;
+        Matrix m=new Matrix();
+        m.postRotate(angle);
+        return Bitmap.createBitmap(src,0,0,src.getWidth(),src.getHeight(),m,true);
+    }
+
+    Bitmap autoCropDocument(Bitmap src){
+        if(src==null) return null;
+        int w=src.getWidth(),h=src.getHeight();
+        if(w<50||h<50) return src;
+        // تقليم الحواف البسيطة لتوسيط محتوى المستند بدقة
+        int cropMarginX=Math.max(0,(int)(w*0.02f));
+        int cropMarginY=Math.max(0,(int)(h*0.02f));
+        int newW=w-cropMarginX*2,newH=h-cropMarginY*2;
+        if(newW<=10||newH<=10) return src;
+        return Bitmap.createBitmap(src,cropMarginX,cropMarginY,newW,newH);
+    }
+
+    Bitmap applyCamScannerFilter(Bitmap src,String mode){
+        if(src==null) return null;
+        int w=src.getWidth(),h=src.getHeight();
+        if("original".equals(mode)){
+            return src.copy(src.getConfig(),true);
+        }
+        Bitmap out=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
+        int[] pixels=new int[w*h];
+        src.getPixels(pixels,0,w,0,0,w,h);
+
+        if("bw".equals(mode)){
+            // تحويل أبيض وأسود فائق الوضوح للنصوص والأرقام
+            for(int i=0;i<pixels.length;i++){
+                int c=pixels[i];
+                int r=(c>>16)&0xFF,g=(c>>8)&0xFF,b=c&0xFF;
+                int lum=(r*77+g*150+b*29)>>8;
+                int val=lum>135?255:0;
+                pixels[i]=0xFF000000|(val<<16)|(val<<8)|val;
+            }
+        }else if("gray".equals(mode)){
+            // تدرج رمادي ناعم
+            for(int i=0;i<pixels.length;i++){
+                int c=pixels[i];
+                int r=(c>>16)&0xFF,g=(c>>8)&0xFF,b=c&0xFF;
+                int lum=(r*77+g*150+b*29)>>8;
+                pixels[i]=0xFF000000|(lum<<16)|(lum<<8)|lum;
+            }
+        }else{
+            // فلتر سحري "Magic Color" لتحسين التباين وإبراز الفاتورة مثل CamScanner
+            for(int i=0;i<pixels.length;i++){
+                int c=pixels[i];
+                int r=(c>>16)&0xFF,g=(c>>8)&0xFF,b=c&0xFF;
+                int lum=(r*77+g*150+b*29)>>8;
+                // تفتيح الخلفية لتصبح بيضاء نظيفة وتغميق الحبر والخطوط
+                float factor=lum>150?1.28f:0.82f;
+                int nr=Math.min(255,Math.max(0,(int)(r*factor)));
+                int ng=Math.min(255,Math.max(0,(int)(g*factor)));
+                int nb=Math.min(255,Math.max(0,(int)(b*factor)));
+                // تعزيز الوضوح العام
+                if(lum>180){ nr=Math.min(255,nr+25); ng=Math.min(255,ng+25); nb=Math.min(255,nb+25); }
+                pixels[i]=0xFF000000|(nr<<16)|(ng<<8)|nb;
+            }
+        }
+        out.setPixels(pixels,0,w,0,0,w,h);
+        return out;
+    }
+
+    void onImageCapturedForScan(Bitmap raw){
+        scanRawBitmap=autoCropDocument(scaleDownBitmap(raw,1400));
+        scanRotation=0;
+        scanFilterMode="magic";
+        showScanProcessingDialog();
+    }
+
+    void showScanProcessingDialog(){
+        if(scanRawBitmap==null){
+            Toast.makeText(this,"لا توجد صورة لمعالجتها",Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Dialog dlg=new Dialog(this,android.R.style.Theme_DeviceDefault_Light_NoActionBar_Fullscreen);
+        LinearLayout box=new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackgroundColor(BG);
+        box.setPadding(dp(12),dp(10),dp(12),dp(10));
+        box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        // Header
+        LinearLayout header=new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        Button closeBtn=button("✕");
+        closeBtn.setTextColor(Color.WHITE); closeBtn.setBackgroundColor(RED);
+        closeBtn.setOnClickListener(v->dlg.dismiss());
+        header.addView(closeBtn,new LinearLayout.LayoutParams(dp(44),dp(40)));
+
+        TextView titleTv=tv("🪄 معالجة وتحسين الفاتورة",16);
+        titleTv.setTextColor(GREEN); titleTv.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        LinearLayout.LayoutParams tlp=new LinearLayout.LayoutParams(0,dp(40),1);
+        tlp.setMargins(dp(6),0,0,0);
+        header.addView(titleTv,tlp);
+        box.addView(header,new LinearLayout.LayoutParams(-1,dp(48)));
+
+        // Preview Image
+        ImageView preview=new ImageView(this);
+        preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        preview.setBackground(outlined(Color.BLACK,1,8));
+        preview.setPadding(dp(2),dp(2),dp(2),dp(2));
+        box.addView(preview,new LinearLayout.LayoutParams(-1,dp(230)));
+
+        // Filter Mode Buttons
+        LinearLayout filtersRow=new LinearLayout(this);
+        filtersRow.setOrientation(LinearLayout.HORIZONTAL);
+        filtersRow.setGravity(Gravity.CENTER);
+        filtersRow.setPadding(0,dp(4),0,dp(4));
+
+        Button btnMagic=action("🪄 سحري",GREEN);
+        Button btnBw=action("📄 أبيض/أسود",DARK);
+        Button btnGray=action("🔘 رمادي",BLUE);
+        Button btnOrig=action("🖼️ أصلي",MUTED);
+        Button btnRotate=action("🔄 تدوير 90°",GOLD);
+
+        final Bitmap[] renderedBmp=new Bitmap[]{null};
+
+        Runnable updatePreview=()->{
+            Bitmap rot=rotateBitmap(scanRawBitmap,scanRotation);
+            Bitmap proc=applyCamScannerFilter(rot,scanFilterMode);
+            renderedBmp[0]=proc;
+            preview.setImageBitmap(proc);
+        };
+
+        btnMagic.setOnClickListener(v->{ scanFilterMode="magic"; updatePreview.run(); });
+        btnBw.setOnClickListener(v->{ scanFilterMode="bw"; updatePreview.run(); });
+        btnGray.setOnClickListener(v->{ scanFilterMode="gray"; updatePreview.run(); });
+        btnOrig.setOnClickListener(v->{ scanFilterMode="original"; updatePreview.run(); });
+        btnRotate.setOnClickListener(v->{ scanRotation=(scanRotation+90)%360; updatePreview.run(); });
+
+        filtersRow.addView(btnMagic,new LinearLayout.LayoutParams(0,dp(40),1));
+        filtersRow.addView(btnBw,new LinearLayout.LayoutParams(0,dp(40),1));
+        filtersRow.addView(btnGray,new LinearLayout.LayoutParams(0,dp(40),1));
+        filtersRow.addView(btnOrig,new LinearLayout.LayoutParams(0,dp(40),1));
+        filtersRow.addView(btnRotate,new LinearLayout.LayoutParams(0,dp(40),1.1f));
+        box.addView(filtersRow,new LinearLayout.LayoutParams(-1,dp(46)));
+
+        updatePreview.run();
+
+        // Fields Scroll
+        ScrollView sv=new ScrollView(this);
+        LinearLayout fields=new LinearLayout(this);
+        fields.setOrientation(LinearLayout.VERTICAL);
+        fields.setPadding(dp(4),dp(4),dp(4),dp(4));
+
+        String defName="فاتورة_"+new SimpleDateFormat("yyyyMMdd_HHmm",Locale.US).format(new Date());
+        EditText nameInput=field("اسم الفاتورة أو الوصف");
+        nameInput.setText(defName);
+        fields.addView(tv("اسم أو وصف الفاتورة:",12),new LinearLayout.LayoutParams(-1,dp(22)));
+        fields.addView(nameInput,new LinearLayout.LayoutParams(-1,dp(38)));
+
+        fields.addView(tv("تصنيف الفاتورة:",12),new LinearLayout.LayoutParams(-1,dp(22)));
+        String[] categories={"فواتير مبيعات","فواتير شراء","سندات قبض","مصاريف عامة","أخرى"};
+        final String[] selectedCat=new String[]{categories[0]};
+
+        LinearLayout catRow=new LinearLayout(this);
+        catRow.setOrientation(LinearLayout.HORIZONTAL);
+        final Button[] catButtons=new Button[categories.length];
+        for(int i=0;i<categories.length;i++){
+            final String cat=categories[i];
+            Button cb=button(cat);
+            cb.setTextSize(10);
+            catButtons[i]=cb;
+            cb.setOnClickListener(v->{
+                selectedCat[0]=cat;
+                for(int j=0;j<categories.length;j++){
+                    catButtons[j].setTextColor(categories[j].equals(cat)?Color.WHITE:TEXT);
+                    catButtons[j].setBackgroundColor(categories[j].equals(cat)?GREEN:Color.rgb(235,238,235));
+                }
+            });
+            catRow.addView(cb,new LinearLayout.LayoutParams(0,dp(36),1));
+        }
+        catButtons[0].setTextColor(Color.WHITE);
+        catButtons[0].setBackgroundColor(GREEN);
+        fields.addView(catRow,new LinearLayout.LayoutParams(-1,dp(40)));
+
+        EditText notesInput=field("ملاحظات إضافية (اختياري)");
+        fields.addView(tv("ملاحظات:",12),new LinearLayout.LayoutParams(-1,dp(22)));
+        fields.addView(notesInput,new LinearLayout.LayoutParams(-1,dp(38)));
+
+        // Save & Share Buttons
+        LinearLayout actionsRow=new LinearLayout(this);
+        actionsRow.setOrientation(LinearLayout.HORIZONTAL);
+        actionsRow.setPadding(0,dp(6),0,0);
+
+        Button saveBtn=action("💾 حفظ في الأرشيف",GREEN);
+        saveBtn.setTextSize(13);
+        Button shareBtn=action("📤 حفظ ومشاركة",GOLD);
+        shareBtn.setTextSize(13);
+
+        saveBtn.setOnClickListener(v->{
+            String name=nameInput.getText().toString().trim();
+            if(name.isEmpty()) name=defName;
+            String cat=selectedCat[0];
+            String notes=notesInput.getText().toString().trim();
+            String date=db.now();
+            String savedPath=saveBitmapToInvoicesDir(renderedBmp[0]);
+            if(savedPath!=null){
+                String fileName=new File(savedPath).getName();
+                db.addScannedInvoice(name,fileName,cat,notes,date,savedPath);
+                Toast.makeText(this,"تم حفظ الفاتورة بنجاح في مجلد invoices_images",Toast.LENGTH_LONG).show();
+                dlg.dismiss();
+                scanner();
+            }else{
+                Toast.makeText(this,"فشل حفظ ملف الصورة",Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        shareBtn.setOnClickListener(v->{
+            String name=nameInput.getText().toString().trim();
+            if(name.isEmpty()) name=defName;
+            String cat=selectedCat[0];
+            String notes=notesInput.getText().toString().trim();
+            String date=db.now();
+            String savedPath=saveBitmapToInvoicesDir(renderedBmp[0]);
+            if(savedPath!=null){
+                String fileName=new File(savedPath).getName();
+                db.addScannedInvoice(name,fileName,cat,notes,date,savedPath);
+                Toast.makeText(this,"تم حفظ الفاتورة بنجاح",Toast.LENGTH_SHORT).show();
+                dlg.dismiss();
+                scanner();
+                shareScannedInvoice(savedPath,name);
+            }
+        });
+
+        actionsRow.addView(saveBtn,new LinearLayout.LayoutParams(0,dp(48),1));
+        actionsRow.addView(shareBtn,new LinearLayout.LayoutParams(0,dp(48),1));
+        fields.addView(actionsRow,new LinearLayout.LayoutParams(-1,dp(56)));
+
+        sv.addView(fields);
+        box.addView(sv,new LinearLayout.LayoutParams(-1,0,1));
+
+        dlg.setContentView(box);
+        dlg.show();
+    }
+
+    String saveBitmapToInvoicesDir(Bitmap bitmap){
+        if(bitmap==null) return null;
+        try{
+            String fileName="invoice_scan_"+System.currentTimeMillis()+".jpg";
+            File dest=new File(getInvoicesImagesDir(),fileName);
+            try(FileOutputStream fos=new FileOutputStream(dest)){
+                bitmap.compress(Bitmap.CompressFormat.JPEG,92,fos);
+                fos.flush();
+            }
+            return dest.getAbsolutePath();
+        }catch(Exception e){
+            return null;
+        }
+    }
+
+    void shareScannedInvoice(String filePath,String title){
+        try{
+            File file=new File(filePath);
+            if(!file.exists()){
+                Toast.makeText(this,"ملف الصورة غير موجود",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Uri uri=FileProvider.getUriForFile(this,getPackageName()+".fileprovider",file);
+            Intent intent=new Intent(Intent.ACTION_SEND);
+            intent.setType("image/jpeg");
+            intent.putExtra(Intent.EXTRA_STREAM,uri);
+            intent.putExtra(Intent.EXTRA_SUBJECT,title);
+            intent.putExtra(Intent.EXTRA_TEXT,"فاتورة ممسوحة ضوئياً: "+title+"\nبقالة العنزي");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(intent,"مشاركة الفاتورة عبر"));
+        }catch(Exception e){
+            Toast.makeText(this,"تعذر المشاركة: "+e.getMessage(),Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    void showScannedInvoiceViewer(long id,String name,String fileName,String category,String notes,String date,String imagePath){
+        Dialog dlg=new Dialog(this,android.R.style.Theme_DeviceDefault_Light_NoActionBar_Fullscreen);
+        LinearLayout box=new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackgroundColor(BG);
+        box.setPadding(dp(12),dp(10),dp(12),dp(10));
+        box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        LinearLayout top=new LinearLayout(this);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        Button close=button("✕");
+        close.setTextColor(Color.WHITE); close.setBackgroundColor(DARK);
+        close.setOnClickListener(v->dlg.dismiss());
+        top.addView(close,new LinearLayout.LayoutParams(dp(44),dp(40)));
+
+        TextView titleTv=tv(name,16);
+        titleTv.setTextColor(GREEN); titleTv.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        top.addView(titleTv,new LinearLayout.LayoutParams(0,dp(40),1));
+        box.addView(top,new LinearLayout.LayoutParams(-1,dp(48)));
+
+        ImageView iv=new ImageView(this);
+        iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        iv.setBackground(outlined(Color.BLACK,1,8));
+        File file=new File(imagePath);
+        if(file.exists()){
+            Bitmap b=BitmapFactory.decodeFile(imagePath);
+            if(b!=null) iv.setImageBitmap(b);
+        }
+        box.addView(iv,new LinearLayout.LayoutParams(-1,0,1));
+
+        LinearLayout details=card();
+        details.setPadding(dp(8),dp(6),dp(8),dp(6));
+        details.addView(tv("التصنيف: "+category+"  •  التاريخ: "+date,11),new LinearLayout.LayoutParams(-1,dp(22)));
+        if(notes!=null&&!notes.trim().isEmpty()){
+            details.addView(tv("ملاحظات: "+notes,11),new LinearLayout.LayoutParams(-1,dp(22)));
+        }
+        box.addView(details,new LinearLayout.LayoutParams(-1,dp(60)));
+
+        LinearLayout bbar=new LinearLayout(this);
+        bbar.setOrientation(LinearLayout.HORIZONTAL);
+        bbar.setPadding(0,dp(4),0,0);
+
+        Button shareBtn=action("📤 مشاركة الفاتورة",GOLD);
+        shareBtn.setOnClickListener(v->shareScannedInvoice(imagePath,name));
+
+        Button delBtn=action("🗑️ حذف",RED);
+        delBtn.setOnClickListener(v->{
+            new AlertDialog.Builder(this)
+                .setTitle("حذف الفاتورة")
+                .setMessage("هل أنت متأكد من حذف هذه الفاتورة من الأرشيف؟")
+                .setNegativeButton("إلغاء",null)
+                .setPositiveButton("حذف",(d,w)->{
+                    db.deleteScannedInvoice(id);
+                    if(file.exists()) file.delete();
+                    Toast.makeText(this,"تم حذف الفاتورة",Toast.LENGTH_SHORT).show();
+                    dlg.dismiss();
+                    scanner();
+                }).show();
+        });
+
+        bbar.addView(shareBtn,new LinearLayout.LayoutParams(0,dp(48),1.5f));
+        bbar.addView(delBtn,new LinearLayout.LayoutParams(0,dp(48),1f));
+        box.addView(bbar,new LinearLayout.LayoutParams(-1,dp(52)));
+
+        dlg.setContentView(box);
+        dlg.show();
+    }
+
+    void scanner(){
+        base("ماسح الفواتير (CamScanner)");
+        section("📷 الماسح الضوئي الذكي للفواتير");
+
+        // Action Buttons Row (Camera + Gallery)
+        LinearLayout topActions=new LinearLayout(this);
+        topActions.setOrientation(LinearLayout.HORIZONTAL);
+        topActions.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        Button camBtn=action("📸 التقاط بالكاميرا",GREEN);
+        camBtn.setTextSize(13); camBtn.setMaxLines(1); fitInside(camBtn,14f,10f);
+        camBtn.setOnClickListener(v->launchScanCamera());
+
+        Button galleryBtn=action("🖼️ اختيار من المعرض",BLUE);
+        galleryBtn.setTextSize(13); galleryBtn.setMaxLines(1); fitInside(galleryBtn,14f,10f);
+        galleryBtn.setOnClickListener(v->launchScanGallery());
+
+        topActions.addView(camBtn,new LinearLayout.LayoutParams(0,dp(52),1.1f));
+        LinearLayout.LayoutParams gp=new LinearLayout.LayoutParams(0,dp(52),1f);
+        gp.setMargins(dp(4),0,0,0);
+        topActions.addView(galleryBtn,gp);
+        content.addView(topActions,new LinearLayout.LayoutParams(-1,dp(56)));
+        addSpace(4);
+
+        // Search Field
+        EditText search=field("🔍 بحث في أرشيف الفواتير الممسوحة");
+        search.setText(scanSearchQuery);
+        search.addTextChangedListener(new android.text.TextWatcher(){
+            public void beforeTextChanged(CharSequence s,int start,int count,int after){}
+            public void onTextChanged(CharSequence s,int start,int before,int count){
+                scanSearchQuery=s.toString().trim();
+                refreshScannedList(content);
+            }
+            public void afterTextChanged(android.text.Editable s){}
+        });
+        content.addView(search,new LinearLayout.LayoutParams(-1,dp(38)));
+        addSpace(3);
+
+        // Category Filter Chips
+        String[] cats={"الكل","فواتير مبيعات","فواتير شراء","سندات قبض","أخرى"};
+        LinearLayout catFilterRow=new LinearLayout(this);
+        catFilterRow.setOrientation(LinearLayout.HORIZONTAL);
+        catFilterRow.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        final Button[] chips=new Button[cats.length];
+        for(int i=0;i<cats.length;i++){
+            final String cat=cats[i];
+            Button chip=button(cat);
+            chip.setTextSize(10);
+            chips[i]=chip;
+            boolean active=cat.equals(scanCategoryFilter);
+            chip.setTextColor(active?Color.WHITE:TEXT);
+            chip.setBackgroundColor(active?DARK:Color.rgb(230,235,230));
+            chip.setOnClickListener(v->{
+                scanCategoryFilter=cat;
+                for(int j=0;j<cats.length;j++){
+                    boolean sel=cats[j].equals(cat);
+                    chips[j].setTextColor(sel?Color.WHITE:TEXT);
+                    chips[j].setBackgroundColor(sel?DARK:Color.rgb(230,235,230));
+                }
+                refreshScannedList(content);
+            });
+            catFilterRow.addView(chip,new LinearLayout.LayoutParams(0,dp(34),1));
+        }
+        content.addView(catFilterRow,new LinearLayout.LayoutParams(-1,dp(36)));
+        addSpace(4);
+
+        // Container for scanned invoices list
+        LinearLayout listContainer=new LinearLayout(this);
+        listContainer.setTag("scanned_list_container");
+        listContainer.setOrientation(LinearLayout.VERTICAL);
+        content.addView(listContainer,new LinearLayout.LayoutParams(-1,-2));
+
+        populateScannedInvoices(listContainer);
+    }
+
+    void refreshScannedList(LinearLayout parent){
+        LinearLayout container=(LinearLayout)parent.findViewWithTag("scanned_list_container");
+        if(container!=null){
+            container.removeAllViews();
+            populateScannedInvoices(container);
+        }
+    }
+
+    void populateScannedInvoices(LinearLayout container){
+        Cursor c=db.scannedInvoices(scanSearchQuery,scanCategoryFilter);
+        int count=0;
+        if(c!=null){
+            while(c.moveToNext()){
+                count++;
+                long id=c.getLong(0);
+                String name=c.getString(1);
+                String fileName=c.getString(2);
+                String cat=c.getString(3);
+                String notes=c.getString(4);
+                String date=c.getString(5);
+                String imgPath=c.getString(6);
+
+                LinearLayout card=card();
+                card.setOrientation(LinearLayout.HORIZONTAL);
+                card.setPadding(dp(8),dp(6),dp(8),dp(6));
+                card.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+                // Thumbnail
+                ImageView thumb=new ImageView(this);
+                thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                thumb.setBackground(outlined(Color.rgb(220,225,220),1,6));
+                if(imgPath!=null&&new File(imgPath).exists()){
+                    Bitmap b=BitmapFactory.decodeFile(imgPath);
+                    if(b!=null) thumb.setImageBitmap(b);
+                }
+                card.addView(thumb,new LinearLayout.LayoutParams(dp(54),dp(54)));
+
+                // Info Column
+                LinearLayout info=new LinearLayout(this);
+                info.setOrientation(LinearLayout.VERTICAL);
+                info.setPadding(dp(8),0,dp(8),0);
+
+                TextView nameTv=tv(name,13);
+                nameTv.setTextColor(GREEN); nameTv.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                nameTv.setMaxLines(1);
+                info.addView(nameTv,new LinearLayout.LayoutParams(-1,dp(22)));
+
+                TextView subTv=tv("🏷️ "+(cat==null?"عام":cat)+"  •  📅 "+date,10);
+                subTv.setTextColor(MUTED); subTv.setMaxLines(1);
+                info.addView(subTv,new LinearLayout.LayoutParams(-1,dp(18)));
+
+                if(notes!=null&&!notes.trim().isEmpty()){
+                    TextView noteTv=tv("📝 "+notes,10);
+                    noteTv.setTextColor(TEXT); noteTv.setMaxLines(1);
+                    info.addView(noteTv,new LinearLayout.LayoutParams(-1,dp(16)));
+                }
+                card.addView(info,new LinearLayout.LayoutParams(0,-2,1));
+
+                // Quick Actions Column
+                LinearLayout actions=new LinearLayout(this);
+                actions.setOrientation(LinearLayout.HORIZONTAL);
+                actions.setGravity(Gravity.CENTER_VERTICAL);
+
+                Button viewBtn=button("👁️");
+                viewBtn.setTextSize(14);
+                viewBtn.setContentDescription("عرض الفاتورة");
+                viewBtn.setOnClickListener(v->showScannedInvoiceViewer(id,name,fileName,cat,notes,date,imgPath));
+                actions.addView(viewBtn,new LinearLayout.LayoutParams(dp(38),dp(38)));
+
+                Button shareBtn=button("📤");
+                shareBtn.setTextSize(14);
+                shareBtn.setContentDescription("مشاركة الفاتورة");
+                shareBtn.setOnClickListener(v->shareScannedInvoice(imgPath,name));
+                actions.addView(shareBtn,new LinearLayout.LayoutParams(dp(38),dp(38)));
+
+                card.addView(actions,new LinearLayout.LayoutParams(-2,-2));
+
+                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
+                lp.setMargins(0,0,0,dp(6));
+                container.addView(card,lp);
+            }
+            c.close();
+        }
+
+        if(count==0){
+            LinearLayout emptyBox=card();
+            emptyBox.setOrientation(LinearLayout.VERTICAL);
+            emptyBox.setPadding(dp(16),dp(20),dp(16),dp(20));
+            emptyBox.setGravity(Gravity.CENTER);
+
+            TextView emptyIcon=tv("📄",32);
+            emptyIcon.setGravity(Gravity.CENTER);
+            emptyBox.addView(emptyIcon,new LinearLayout.LayoutParams(-1,dp(45)));
+
+            TextView emptyText=tv("لا توجد فواتير ممسوحة ضوئياً حتى الآن",13);
+            emptyText.setTextColor(MUTED); emptyText.setGravity(Gravity.CENTER);
+            emptyBox.addView(emptyText,new LinearLayout.LayoutParams(-1,dp(26)));
+
+            TextView emptySub=tv("اضغط على 'التقاط بالكاميرا' لتصوير فاتورة واقتصاصها وتحسين وضوحها تلقائياً",11);
+            emptySub.setTextColor(MUTED); emptySub.setGravity(Gravity.CENTER);
+            emptyBox.addView(emptySub,new LinearLayout.LayoutParams(-1,dp(36)));
+
+            container.addView(emptyBox,new LinearLayout.LayoutParams(-1,-2));
+        }
+    }
+
     static class DB extends SQLiteOpenHelper{
-        DB(Context c){super(c,"enezi.db",null,10);}
+        DB(Context c){super(c,"enezi.db",null,11);}
         public void onCreate(SQLiteDatabase d){create(d);}
-        void create(SQLiteDatabase d){d.execSQL("CREATE TABLE customers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,phone TEXT)");d.execSQL("CREATE TABLE invoices(id INTEGER PRIMARY KEY AUTOINCREMENT,no TEXT,customer TEXT,total REAL,paid REAL DEFAULT 0,date TEXT)");d.execSQL("CREATE TABLE transactions(id INTEGER PRIMARY KEY AUTOINCREMENT,customer_id INTEGER,amount REAL,details TEXT,type INTEGER,date TEXT)");d.execSQL("CREATE TABLE items(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,qty REAL,min_qty REAL,cost REAL DEFAULT 0,sale REAL DEFAULT 0)");d.execSQL("CREATE TABLE invoice_items(id INTEGER PRIMARY KEY AUTOINCREMENT,invoice_id INTEGER,name TEXT,qty REAL,total REAL)");d.execSQL("CREATE TABLE IF NOT EXISTS suppliers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,phone TEXT)");d.execSQL("CREATE TABLE IF NOT EXISTS purchase_invoices(id INTEGER PRIMARY KEY AUTOINCREMENT,no TEXT,supplier TEXT,total REAL,paid REAL DEFAULT 0,date TEXT)");d.execSQL("CREATE TABLE IF NOT EXISTS purchase_items(id INTEGER PRIMARY KEY AUTOINCREMENT,purchase_id INTEGER,name TEXT,qty REAL,cost REAL,sale REAL,total REAL)");d.execSQL("CREATE TABLE IF NOT EXISTS note_pages(id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT,date TEXT)");d.execSQL("CREATE TABLE IF NOT EXISTS note_items(id INTEGER PRIMARY KEY AUTOINCREMENT,page_id INTEGER,side INTEGER,name TEXT,qty REAL,position INTEGER)");}
-        public void onUpgrade(SQLiteDatabase d,int o,int n){if(o<6){try{d.execSQL("ALTER TABLE customers ADD COLUMN phone TEXT");}catch(Exception ignored){}}if(o<7){try{d.execSQL("ALTER TABLE invoices ADD COLUMN paid REAL DEFAULT 0");}catch(Exception ignored){}}if(o<2){try{d.execSQL("ALTER TABLE invoices ADD COLUMN date TEXT");}catch(Exception ignored){}}if(o<5){d.execSQL("CREATE TABLE IF NOT EXISTS invoice_items(id INTEGER PRIMARY KEY AUTOINCREMENT,invoice_id INTEGER,name TEXT,qty REAL,total REAL)");}if(o<8){try{d.execSQL("ALTER TABLE items ADD COLUMN cost REAL DEFAULT 0");}catch(Exception ignored){}try{d.execSQL("ALTER TABLE items ADD COLUMN sale REAL DEFAULT 0");}catch(Exception ignored){}}if(o<9){d.execSQL("CREATE TABLE IF NOT EXISTS suppliers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,phone TEXT)");d.execSQL("CREATE TABLE IF NOT EXISTS purchase_invoices(id INTEGER PRIMARY KEY AUTOINCREMENT,no TEXT,supplier TEXT,total REAL,paid REAL DEFAULT 0,date TEXT)");d.execSQL("CREATE TABLE IF NOT EXISTS purchase_items(id INTEGER PRIMARY KEY AUTOINCREMENT,purchase_id INTEGER,name TEXT,qty REAL,cost REAL,sale REAL,total REAL)");}if(o<10){d.execSQL("CREATE TABLE IF NOT EXISTS note_pages(id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT,date TEXT)");d.execSQL("CREATE TABLE IF NOT EXISTS note_items(id INTEGER PRIMARY KEY AUTOINCREMENT,page_id INTEGER,side INTEGER,name TEXT,qty REAL,position INTEGER);");}}
+        void create(SQLiteDatabase d){
+            d.execSQL("CREATE TABLE customers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,phone TEXT)");
+            d.execSQL("CREATE TABLE invoices(id INTEGER PRIMARY KEY AUTOINCREMENT,no TEXT,customer TEXT,total REAL,paid REAL DEFAULT 0,date TEXT)");
+            d.execSQL("CREATE TABLE transactions(id INTEGER PRIMARY KEY AUTOINCREMENT,customer_id INTEGER,amount REAL,details TEXT,type INTEGER,date TEXT)");
+            d.execSQL("CREATE TABLE items(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,qty REAL,min_qty REAL,cost REAL DEFAULT 0,sale REAL DEFAULT 0)");
+            d.execSQL("CREATE TABLE invoice_items(id INTEGER PRIMARY KEY AUTOINCREMENT,invoice_id INTEGER,name TEXT,qty REAL,total REAL)");
+            d.execSQL("CREATE TABLE IF NOT EXISTS suppliers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,phone TEXT)");
+            d.execSQL("CREATE TABLE IF NOT EXISTS purchase_invoices(id INTEGER PRIMARY KEY AUTOINCREMENT,no TEXT,supplier TEXT,total REAL,paid REAL DEFAULT 0,date TEXT)");
+            d.execSQL("CREATE TABLE IF NOT EXISTS purchase_items(id INTEGER PRIMARY KEY AUTOINCREMENT,purchase_id INTEGER,name TEXT,qty REAL,cost REAL,sale REAL,total REAL)");
+            d.execSQL("CREATE TABLE IF NOT EXISTS note_pages(id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT,date TEXT)");
+            d.execSQL("CREATE TABLE IF NOT EXISTS note_items(id INTEGER PRIMARY KEY AUTOINCREMENT,page_id INTEGER,side INTEGER,name TEXT,qty REAL,position INTEGER)");
+            d.execSQL("CREATE TABLE IF NOT EXISTS scanned_invoices(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, file_name TEXT, category TEXT, notes TEXT, date TEXT, image_path TEXT)");
+        }
+        public void onUpgrade(SQLiteDatabase d,int o,int n){
+            if(o<6){try{d.execSQL("ALTER TABLE customers ADD COLUMN phone TEXT");}catch(Exception ignored){}}
+            if(o<7){try{d.execSQL("ALTER TABLE invoices ADD COLUMN paid REAL DEFAULT 0");}catch(Exception ignored){}}
+            if(o<2){try{d.execSQL("ALTER TABLE invoices ADD COLUMN date TEXT");}catch(Exception ignored){}}
+            if(o<5){d.execSQL("CREATE TABLE IF NOT EXISTS invoice_items(id INTEGER PRIMARY KEY AUTOINCREMENT,invoice_id INTEGER,name TEXT,qty REAL,total REAL)");}
+            if(o<8){try{d.execSQL("ALTER TABLE items ADD COLUMN cost REAL DEFAULT 0");}catch(Exception ignored){}try{d.execSQL("ALTER TABLE items ADD COLUMN sale REAL DEFAULT 0");}catch(Exception ignored){}}
+            if(o<9){d.execSQL("CREATE TABLE IF NOT EXISTS suppliers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,phone TEXT)");d.execSQL("CREATE TABLE IF NOT EXISTS purchase_invoices(id INTEGER PRIMARY KEY AUTOINCREMENT,no TEXT,supplier TEXT,total REAL,paid REAL DEFAULT 0,date TEXT)");d.execSQL("CREATE TABLE IF NOT EXISTS purchase_items(id INTEGER PRIMARY KEY AUTOINCREMENT,purchase_id INTEGER,name TEXT,qty REAL,cost REAL,sale REAL,total REAL)");}
+            if(o<10){d.execSQL("CREATE TABLE IF NOT EXISTS note_pages(id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT,date TEXT)");d.execSQL("CREATE TABLE IF NOT EXISTS note_items(id INTEGER PRIMARY KEY AUTOINCREMENT,page_id INTEGER,side INTEGER,name TEXT,qty REAL,position INTEGER);");}
+            if(o<11){d.execSQL("CREATE TABLE IF NOT EXISTS scanned_invoices(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, file_name TEXT, category TEXT, notes TEXT, date TEXT, image_path TEXT);");}
+        }
+        long addScannedInvoice(String name,String fileName,String category,String notes,String date,String imagePath){
+            ContentValues v=new ContentValues();
+            v.put("name",name);
+            v.put("file_name",fileName);
+            v.put("category",category);
+            v.put("notes",notes);
+            v.put("date",date);
+            v.put("image_path",imagePath);
+            return getWritableDatabase().insert("scanned_invoices",null,v);
+        }
+        Cursor scannedInvoices(String q,String category){
+            String sel="";
+            ArrayList<String> args=new ArrayList<>();
+            if(q!=null&&!q.trim().isEmpty()){
+                sel+="(name LIKE ? OR notes LIKE ?)";
+                args.add("%"+q+"%");
+                args.add("%"+q+"%");
+            }
+            if(category!=null&&!category.equals("الكل")&&!category.trim().isEmpty()){
+                if(!sel.isEmpty()) sel+=" AND ";
+                sel+="category=?";
+                args.add(category);
+            }
+            return getReadableDatabase().query("scanned_invoices",
+                new String[]{"id","name","file_name","category","notes","date","image_path"},
+                sel.isEmpty()?null:sel,
+                args.isEmpty()?null:args.toArray(new String[0]),
+                null,null,"datetime(date) DESC, id DESC");
+        }
+        void deleteScannedInvoice(long id){
+            if(id>0) getWritableDatabase().delete("scanned_invoices","id=?",new String[]{String.valueOf(id)});
+        }
+        int scannedInvoiceCount(){
+            Cursor c=getReadableDatabase().rawQuery("SELECT COUNT(*) FROM scanned_invoices",null);
+            int x=c.moveToFirst()?c.getInt(0):0;
+            c.close();
+            return x;
+        }
         long createNotePage(String title,String date){ContentValues v=new ContentValues();v.put("title",title);v.put("date",date);return getWritableDatabase().insert("note_pages",null,v);}
         void touchNotePage(long id){if(id>0){ContentValues v=new ContentValues();v.put("date",now());getWritableDatabase().update("note_pages",v,"id=?",new String[]{String.valueOf(id)});}}
         int nextNotePosition(long pageId,int side){Cursor c=getReadableDatabase().rawQuery("SELECT COALESCE(MAX(position),0)+1 FROM note_items WHERE page_id=? AND side=?",new String[]{String.valueOf(pageId),String.valueOf(side)});int x=c.moveToFirst()?c.getInt(0):1;c.close();return x;}
