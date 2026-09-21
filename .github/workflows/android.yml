@@ -30,12 +30,13 @@ jobs:
 
       - name: Build APK
         run: |
+          set -o pipefail
           gradle :app:assembleDebug --stacktrace --no-daemon 2>&1 | tee build.log
 
       - name: Prepare APK Output
         run: |
           mkdir -p build_output
-          find . -type f -name "*.apk" -exec cp {} build_output/ \;
+          find . -type f -name "*.apk" -exec cp {} build_output/ \; || true
           echo "### 📦 Generated APK Files:" >> $GITHUB_STEP_SUMMARY
           ls -lh build_output >> $GITHUB_STEP_SUMMARY
 

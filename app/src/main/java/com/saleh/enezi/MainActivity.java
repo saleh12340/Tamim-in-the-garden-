@@ -982,6 +982,7 @@ public class MainActivity extends Activity {
     }
 
     int dp(int v){return (int)(v*getResources().getDisplayMetrics().density+0.5f);}
+    int dp(float v){return (int)(v*getResources().getDisplayMetrics().density+0.5f);}
     GradientDrawable bg(int color,float radius){return rounded(color,dp((int)radius));}
     GradientDrawable outline(int color,float radius){return outlined(color,1,dp((int)radius));}
     LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(8),dp(6),dp(8),dp(6));c.setBackground(outline(CARD,12));c.setElevation(dp(1));return c;}
@@ -1128,27 +1129,6 @@ public class MainActivity extends Activity {
 
         dialog.setContentView(box);dialog.setCanceledOnTouchOutside(false);dialog.setCancelable(false);dialog.show();
         if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);dialog.getWindow().setLayout(dp(340),WindowManager.LayoutParams.WRAP_CONTENT);dialog.getWindow().setGravity(Gravity.CENTER);}
-    }
-
-    void showInvoiceDialog(long id,String no,String customer,double total,String date){
-        LinearLayout box=new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(dp(10),dp(5),dp(10),dp(5));
-        TextView head=tv("فاتورة رقم "+no,18); head.setTextColor(GREEN); head.setTypeface(Typeface.DEFAULT,Typeface.BOLD); box.addView(head,new LinearLayout.LayoutParams(-1,dp(38)));
-        box.addView(tv("العميل: "+(customer==null||customer.isEmpty()?"نقدي":customer)+"\nالتاريخ والوقت: "+date,12),new LinearLayout.LayoutParams(-1,dp(50)));
-        sectionInside(box,"الأصناف");
-        Cursor c=db.invoiceLines(id); int count=0;
-        while(c.moveToNext()){
-            String n=c.getString(1); double q=c.getDouble(2), t=c.getDouble(3);
-            TextView row=tv(n+"  ×  "+fmt(q)+"  =  "+fmt(t)+" ريال",12);
-            row.setBackground(outline(Color.rgb(248,250,248),8)); box.addView(row,new LinearLayout.LayoutParams(-1,dp(34))); count++;
-        }
-        c.close();
-        if(count==0) box.addView(tv("لا توجد تفاصيل أصناف محفوظة لهذه الفاتورة.",11),new LinearLayout.LayoutParams(-1,dp(34)));
-        TextView totalV=tv("الإجمالي: "+fmt(total)+" ريال",17); totalV.setTextColor(GREEN); totalV.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-        box.addView(totalV,new LinearLayout.LayoutParams(-1,dp(42)));
-        AlertDialog dialog=new AlertDialog.Builder(this).setView(box)
-            .setPositiveButton("تعديل",null).setNegativeButton("إغلاق",null).create();
-        dialog.setOnShowListener(x->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{dialog.dismiss();invoice(true,id);}));
-        dialog.show();
     }
 
     void showOperationDetails(String customer,long tid,String details,double amount,int type){
@@ -1470,7 +1450,7 @@ public class MainActivity extends Activity {
                 cBg.setCornerRadius(dp(12));
                 cBg.setStroke(dp(1),Color.rgb(222,230,224));
                 card.setBackground(cBg);
-                card.setElevation(dp(1.5f));
+                card.setElevation(dp(2));
 
                 // السطر الأول: رقم الفاتورة + العميل + المبلغ
                 LinearLayout topRow=new LinearLayout(this);
