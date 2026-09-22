@@ -5772,7 +5772,7 @@ public class MainActivity extends Activity {
 
             // Card 3: Estimated Net Profit
             LinearLayout cProfit=card(); cProfit.setOrientation(LinearLayout.VERTICAL); cProfit.setGravity(Gravity.CENTER); cProfit.setPadding(dp(6),dp(6),dp(6),dp(6));
-            TextView cProftT=tv("📈 صافي الأرباح",10f); cProftT.setTextColor(MUTED); cProftT.setGravity(Gravity.CENTER);
+            TextView cProftT=tv("📈 الربح الإجمالي التقديري",10f); cProftT.setTextColor(MUTED); cProftT.setGravity(Gravity.CENTER);
             TextView cProftV=tv("0 ر.ي",12.5f); cProftV.setTextColor(BLUE); cProftV.setTypeface(Typeface.DEFAULT,Typeface.BOLD); cProftV.setGravity(Gravity.CENTER);
             cProfit.addView(cProftT,new LinearLayout.LayoutParams(-1,-2)); cProfit.addView(cProftV,new LinearLayout.LayoutParams(-1,-2));
 
@@ -5822,6 +5822,7 @@ public class MainActivity extends Activity {
 
                     double periodSalesTotal=0;
                     double periodPurchasesTotal=0;
+                    double periodCogsTotal=0;
 
                     while(c.moveToNext()){
                         int kind=c.getInt(0); // 1: sales invoice, 2: transaction, 3: purchase invoice
@@ -5853,7 +5854,15 @@ public class MainActivity extends Activity {
                         if(currentFilter[0]==FILTER_PURCHASES && kind!=3) continue;
                         if(currentFilter[0]==FILTER_OPS && kind!=2) continue;
 
-                        if(kind==1) periodSalesTotal+=amount;
+                        if(kind==1){
+                            periodSalesTotal+=amount;
+                            long reportInvoiceId=db.invoiceIdByNo(fr);
+                            if(reportInvoiceId>0){
+                                Cursor costCursor=db.getReadableDatabase().rawQuery("SELECT COALESCE(qty,0),COALESCE(unit_cost,0) FROM invoice_items WHERE invoice_id=?",new String[]{String.valueOf(reportInvoiceId)});
+                                while(costCursor.moveToNext()) periodCogsTotal += costCursor.getDouble(0)*costCursor.getDouble(1);
+                                costCursor.close();
+                            }
+                        }
                         if(kind==3) periodPurchasesTotal+=amount;
 
                         actCount++;
@@ -5940,7 +5949,7 @@ public class MainActivity extends Activity {
                     // Update summary stat values
                     cSv.setText(fmt(periodSalesTotal)+" ر.ي");
                     cPv.setText(fmt(periodPurchasesTotal)+" ر.ي");
-                    double estProfit=periodSalesTotal-periodPurchasesTotal;
+                    double estProfit=periodSalesTotal-periodCogsTotal;
                     cProftV.setText(fmt(estProfit)+" ر.ي");
                     cProftV.setTextColor(estProfit>=0?BLUE:RED);
 
