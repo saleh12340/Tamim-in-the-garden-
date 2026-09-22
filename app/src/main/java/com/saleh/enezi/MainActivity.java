@@ -524,7 +524,7 @@ public class MainActivity extends Activity {
         else m3.setOnClickListener(v->inventory());
         m4.setOnClickListener(v->customers());
 
-        LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(0,dp(72),1);
+        LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(0,dp(86),1);
         metricsGrid.addView(m1,mp);
         LinearLayout.LayoutParams mp2=new LinearLayout.LayoutParams(0,dp(86),1); mp2.setMargins(dp(5),0,0,0); metricsGrid.addView(m2,mp2);
         LinearLayout.LayoutParams mp3=new LinearLayout.LayoutParams(0,dp(86),1); mp3.setMargins(dp(5),0,0,0); metricsGrid.addView(m3,mp3);
@@ -4610,7 +4610,8 @@ public class MainActivity extends Activity {
     void operationActions(long customerId,String customerName,long tid,String details,double amount,int type){
         String invNo=db.invoiceNoFromTransaction(details);ArrayList<String> choices=new ArrayList<>();
         if(!invNo.isEmpty())choices.add("🧾 تعديل الفاتورة");
-        choices.add("✏ تعديل العملية");choices.add("📤 مشاركة واتساب (صورة + نص)");choices.add("💬 إرسال رسالة SMS");choices.add("🖨 طباعة 58mm");choices.add("🗑 حذف العملية");
+        choices.add("✏ تعديل العملية");choices.add("📤 مشاركة واتساب (صورة + نص)");choices.add("💬 إرسال رسالة SMS");choices.add("🖨 طباعة 58mm");
+        choices.add(invNo.isEmpty()?"🗑 حذف العملية":"🗑 حذف الفاتورة المرتبطة");
         String[] a=choices.toArray(new String[0]);
         new AlertDialog.Builder(this).setTitle("خيارات العملية").setItems(a,(d,w)->{
             int i=0;
@@ -4619,7 +4620,8 @@ public class MainActivity extends Activity {
             if(w==i++){shareOperationImage(customerName,details,amount,type,invNo);return;}
             if(w==i++){shareOperationSms(customerName,details,amount,type,invNo);return;}
             if(w==i++){printOperation(customerName,details,amount,type,invNo);return;}
-            new AlertDialog.Builder(this).setTitle("حذف العملية؟").setPositiveButton("حذف",(x,y)->{db.deleteTransaction(tid);account(customerId,customerName);}).setNegativeButton("إلغاء",null).show();
+            new AlertDialog.Builder(this).setTitle(invNo.isEmpty()?"حذف العملية؟":"حذف الفاتورة المرتبطة؟").setMessage(invNo.isEmpty()?"سيتم حذف الحركة من حساب العميل.":"هذه الحركة مرتبطة بفاتورة؛ سيتم حذف الفاتورة بالكامل وإرجاع المخزون.")
+                .setPositiveButton("حذف",(x,y)->{if(invNo.isEmpty())db.deleteTransaction(tid);else{long iid=db.invoiceIdByNo(invNo);if(iid>0)db.deleteInvoice(iid);}account(customerId,customerName);}).setNegativeButton("إلغاء",null).show();
         }).setNegativeButton("إغلاق",null).show();
     }
 
@@ -7369,8 +7371,8 @@ public class MainActivity extends Activity {
             Cursor c=d.rawQuery("SELECT id FROM invoices WHERE customer=(SELECT name FROM customers WHERE id=?)",new String[]{String.valueOf(id)});
             ArrayList<Long> invoiceIds=new ArrayList<>();while(c.moveToNext())invoiceIds.add(c.getLong(0));c.close();
             d.delete("transactions","customer_id=?",new String[]{String.valueOf(id)});
-            for(Long iid:invoiceIds)d.delete("invoice_items","invoice_id=?",new String[]{String.valueOf(iid)});
-            d.delete("invoices","customer=(SELECT name FROM customers WHERE id=?)",new String[]{String.valueOf(id)});
+            // حذف فواتير العميل عبر المسار الكامل حتى يُعاد المخزون قبل حذفها.
+            for(Long iid:invoiceIds)deleteInvoice(iid);
             d.delete("customers","id=?",new String[]{String.valueOf(id)});
         }
     }
