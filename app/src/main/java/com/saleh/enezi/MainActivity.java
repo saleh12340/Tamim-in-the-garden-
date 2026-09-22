@@ -5691,28 +5691,42 @@ public class MainActivity extends Activity {
         });
 
         pSaveBtn.setOnClickListener(v->{
+            SQLiteDatabase ptx=null;
+            long savedPurchaseId=0;
+            boolean saved=false;
+            String savedNo="", savedSupplier="";
+            double savedSum=0;
             try{
                 String sn=supplier.getText().toString().trim(), no=invoiceNo.getText().toString().trim();
                 if(sn.isEmpty()||no.isEmpty()||lines.isEmpty())throw new Exception();
-                double sum=0; for(PurchaseLine l:lines)sum+=l.total;
+                double sum=0; for(PurchaseLine l:lines){ if(l.qty<=0||l.cost<0||l.sale<0||l.total<0)throw new Exception(); sum+=l.total; }
+                ptx=db.getWritableDatabase();
+                ptx.beginTransaction();
                 db.supplier(sn,"");
                 if(edit && purchaseId>0){
                     db.updatePurchase(purchaseId,no,sn,sum);
                     db.revertStockFromPurchase(purchaseId);
                     db.replacePurchaseLines(purchaseId,lines);
                     db.updateStockFromPurchase(lines);
-                    Toast.makeText(this,"تم حفظ تعديل فاتورة الشراء وتحديث المخزون",Toast.LENGTH_SHORT).show();
-                    showPostSavePurchaseActions(purchaseId,no,sn,lines,sum,db.now());
+                    savedPurchaseId=purchaseId;
                 }else{
                     long pid=db.addPurchase(no,sn,sum,db.now());
                     if(pid<=0)throw new Exception("تعذر حفظ الفاتورة");
                     db.replacePurchaseLines(pid,lines);
                     db.updateStockFromPurchase(lines);
-                    Toast.makeText(this,"تم حفظ فاتورة الشراء وتحديث المخزون",Toast.LENGTH_SHORT).show();
-                    showPostSavePurchaseActions(pid,no,sn,lines,sum,db.now());
+                    savedPurchaseId=pid;
                 }
+                ptx.setTransactionSuccessful();
+                saved=true;
+                savedNo=no; savedSupplier=sn; savedSum=sum;
             }catch(Exception e){
-                Toast.makeText(this,"تحقق من اسم المورد ورقم الفاتورة والأصناف",Toast.LENGTH_SHORT).show();
+                Toast.makeText(this,"لم يتم اعتماد فاتورة الشراء. تحقق من البيانات وحاول مرة أخرى.",Toast.LENGTH_LONG).show();
+            }finally{
+                if(ptx!=null)ptx.endTransaction();
+            }
+            if(saved){
+                Toast.makeText(this,edit?"تم حفظ تعديل فاتورة الشراء وتحديث المخزون":"تم حفظ فاتورة الشراء وتحديث المخزون",Toast.LENGTH_SHORT).show();
+                showPostSavePurchaseActions(savedPurchaseId,savedNo,savedSupplier,lines,savedSum,db.now());
             }
         });
         pClearBtn.setOnClickListener(v->{lines.clear(); redraw[0].run();});
