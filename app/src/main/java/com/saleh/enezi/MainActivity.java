@@ -1694,12 +1694,14 @@ public class MainActivity extends Activity {
         box.addView(actionsGrid,new LinearLayout.LayoutParams(-1,-2));
 
         dlg.setContentView(box);
+        dlg.show();
         if(dlg.getWindow()!=null){
             dlg.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-            dlg.getWindow().setLayout(dp(350),dp(460));
+            int sw=getResources().getDisplayMetrics().widthPixels;
+            int sh=getResources().getDisplayMetrics().heightPixels;
+            dlg.getWindow().setLayout(Math.min(dp(380),Math.max(dp(300),sw-dp(24))),Math.min(dp(560),Math.max(dp(420),sh-dp(80))));
             dlg.getWindow().setGravity(Gravity.CENTER);
         }
-        dlg.show();
     }
 
     void sectionInside(LinearLayout box,String title){
@@ -4614,14 +4616,15 @@ public class MainActivity extends Activity {
 
     void operationActions(long customerId,String customerName,long tid,String details,double amount,int type){
         String invNo=db.invoiceNoFromTransaction(details);ArrayList<String> choices=new ArrayList<>();
-        if(!invNo.isEmpty())choices.add("🧾 تعديل الفاتورة");
-        choices.add("✏ تعديل العملية");choices.add("📤 مشاركة واتساب (صورة + نص)");choices.add("💬 إرسال رسالة SMS");choices.add("🖨 طباعة 58mm");
+        if(!invNo.isEmpty()) choices.add("🧾 تعديل الفاتورة");
+        else choices.add("✏ تعديل العملية");
+        choices.add("📤 مشاركة واتساب (صورة + نص)");choices.add("💬 إرسال رسالة SMS");choices.add("🖨 طباعة 58mm");
         choices.add(invNo.isEmpty()?"🗑 حذف العملية":"🗑 حذف الفاتورة المرتبطة");
         String[] a=choices.toArray(new String[0]);
         new AlertDialog.Builder(this).setTitle("خيارات العملية").setItems(a,(d,w)->{
             int i=0;
             if(!invNo.isEmpty()&&w==i++){long iid=db.invoiceIdByNo(invNo);if(iid>0)invoice(true,iid);return;}
-            if(w==i++){editTransaction(customerId,customerName,tid,amount,details,type);return;}
+            if(invNo.isEmpty() && w==i++){editTransaction(customerId,customerName,tid,amount,details,type);return;}
             if(w==i++){shareOperationImage(customerName,details,amount,type,invNo);return;}
             if(w==i++){shareOperationSms(customerName,details,amount,type,invNo);return;}
             if(w==i++){printOperation(customerName,details,amount,type,invNo);return;}
@@ -7133,7 +7136,6 @@ public class MainActivity extends Activity {
         void revertStockFromInvoice(long invoiceId){
             if(invoiceId<=0)return;
             SQLiteDatabase d=getWritableDatabase();
-            d.beginTransaction();
             Cursor c=null;
             try{
                 c=d.rawQuery("SELECT name,qty FROM invoice_items WHERE invoice_id=?",new String[]{String.valueOf(invoiceId)});
@@ -7151,16 +7153,13 @@ public class MainActivity extends Activity {
                     }
                     ic.close();
                 }
-                d.setTransactionSuccessful();
             }finally{
                 if(c!=null)c.close();
-                d.endTransaction();
             }
         }
         boolean applyStockFromSale(ArrayList<Line> ls,long invoiceId){
             if(ls==null||ls.isEmpty())return true;
             SQLiteDatabase d=getWritableDatabase();
-            d.beginTransaction();
             Cursor c=null;
             try{
                 for(Line l:ls){
@@ -7175,11 +7174,9 @@ public class MainActivity extends Activity {
                     ContentValues mv=new ContentValues(); mv.put("item_id",iid); mv.put("item_name",name); mv.put("qty",-q); mv.put("unit_cost",itemCostPrice(name)); mv.put("source_type","sale"); mv.put("source_id",invoiceId); mv.put("created_at",now());
                     d.insert("stock_movements",null,mv);
                 }
-                d.setTransactionSuccessful();
                 return true;
             }finally{
                 if(c!=null)c.close();
-                d.endTransaction();
             }
         }
         String[] itemNames(){Cursor c=getReadableDatabase().rawQuery("SELECT name FROM items ORDER BY name",null);ArrayList<String>a=new ArrayList<>();while(c.moveToNext())a.add(c.getString(0));c.close();return a.toArray(new String[0]);}
