@@ -565,8 +565,23 @@ public class MainActivity extends Activity {
         }).setNegativeButton("إغلاق",null).show();
     }
 
+    double getCustomerPriorBalance(String cn, boolean edit, String origCustomer, double origNetImpact){
+        if(cn == null || cn.trim().isEmpty()) return 0.0;
+        double b = db.balanceByName(cn.trim());
+        if(edit && origCustomer != null && !origCustomer.isEmpty() && cn.trim().equalsIgnoreCase(origCustomer.trim())){
+            b -= origNetImpact;
+        }
+        if(Math.abs(b) < 0.005) b = 0.0;
+        return b;
+    }
+
     void invoice(){invoice(false,-1);}
     void invoice(boolean edit,long invoiceId){
+        final String origCustomer = edit ? db.invoiceCustomer(invoiceId) : "";
+        final double origTotal = edit ? db.invoiceTotal(invoiceId) : 0;
+        final double origPaid = edit ? db.invoicePaid(invoiceId) : 0;
+        final double origNetImpact = origTotal - origPaid;
+
         base(edit?"تعديل الفاتورة":"فاتورة جديدة");
         section("بيانات الفاتورة");
 
@@ -716,7 +731,7 @@ public class MainActivity extends Activity {
         TextView paidTitle=tv("المبلغ المدفوع (ريال)",12.5f);
         paidTitle.setTextColor(TEXT); paidTitle.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
         EditText paid=numberField("0");
-        paid.setText("0"); paid.setTextSize(13.5f); paid.setSelectAllOnFocus(true);
+        paid.setText(edit?fmt(origPaid):"0"); paid.setTextSize(13.5f); paid.setSelectAllOnFocus(true);
         paidRow.addView(paidTitle,new LinearLayout.LayoutParams(0,dp(38),1));
         paidRow.addView(paid,new LinearLayout.LayoutParams(dp(130),dp(38)));
         invoiceBox.addView(paidRow,new LinearLayout.LayoutParams(-1,dp(40)));
@@ -730,8 +745,18 @@ public class MainActivity extends Activity {
         Button creditMode=button("⏳ آجل");
         Button calcMode=button("🧮 حاسبة الصرف");
         cashMode.setTextSize(11.5f); creditMode.setTextSize(11.5f); calcMode.setTextSize(11.5f);
-        cashMode.setTextColor(Color.WHITE); cashMode.setBackground(rounded(GREEN,dp(10)));
-        creditMode.setTextColor(TEXT); creditMode.setBackground(outline(CARD,10));
+        if(edit){
+            if(origPaid>=origTotal&&origTotal>0){
+                cashMode.setTextColor(Color.WHITE); cashMode.setBackground(rounded(GREEN,dp(10)));
+                creditMode.setTextColor(TEXT); creditMode.setBackground(outline(CARD,10));
+            }else{
+                creditMode.setTextColor(Color.WHITE); creditMode.setBackground(rounded(RED,dp(10)));
+                cashMode.setTextColor(TEXT); cashMode.setBackground(outline(CARD,10));
+            }
+        }else{
+            cashMode.setTextColor(Color.WHITE); cashMode.setBackground(rounded(GREEN,dp(10)));
+            creditMode.setTextColor(TEXT); creditMode.setBackground(outline(CARD,10));
+        }
         calcMode.setTextColor(Color.rgb(24,105,200)); calcMode.setBackground(outline(Color.rgb(240,248,255),10));
         payModes.addView(cashMode,new LinearLayout.LayoutParams(0,dp(36),1));
         LinearLayout.LayoutParams cmlp=new LinearLayout.LayoutParams(0,dp(36),1); cmlp.setMargins(dp(4),0,0,0);
@@ -796,11 +821,12 @@ public class MainActivity extends Activity {
 
         Runnable updateCustomerBalance=()->{
             String cn=customer.getText().toString().trim();
-            double cb=cn.isEmpty()?0:db.balanceByName(cn);
-            customerBalance.setText("رصيد العميل الحالي: "+balanceText(cb));
+            double cb=getCustomerPriorBalance(cn,edit,origCustomer,origNetImpact);
+            customerBalance.setText((edit?"رصيد العميل السابق (قبل هذه الفاتورة): ":"رصيد العميل السابق: ")+balanceText(cb));
             double paidPreview=0;try{paidPreview=Double.parseDouble(paid.getText().toString().trim());}catch(Exception ignored){}
             double invPreview=0;for(Line lx:lines)invPreview+=lx.total;
             double net=cb+invPreview-paidPreview;
+            if(Math.abs(net)<0.005) net=0;
             paymentMode.setText("نوع السداد: "+(paidPreview>=invPreview&&invPreview>0?"نقدي":"آجل")+" • بعد الفاتورة: "+balanceText(net));
         };
         customer.setOnItemClickListener((p,v,pos,id)->updateCustomerBalance.run());
@@ -809,13 +835,14 @@ public class MainActivity extends Activity {
         final Runnable[] redraw=new Runnable[1];
         redraw[0]=()->{
             rows.removeAllViews();
-            double run=0,baseBal=db.balanceByName(customer.getText().toString().trim());
-            for(Line l:lines){run+=l.total;addRow(rows,l,run,baseBal,lines);}
+            String cn=customer.getText().toString().trim();
+            double priorBal=getCustomerPriorBalance(cn,edit,origCustomer,origNetImpact);
+            double run=0;
+            for(Line l:lines){run+=l.total;addRow(rows,l,run,priorBal,lines);}
             boxTotal.setText("الإجمالي: "+fmt(run)+" ريال");
-            double currentBalance=customer.getText().toString().trim().isEmpty()?0:db.balanceByName(customer.getText().toString().trim());
             double paidNow=0; try{paidNow=Double.parseDouble(paid.getText().toString().trim());}catch(Exception ignored){}
             if(paidNow<0)paidNow=0;
-            double remaining=currentBalance+run-paidNow;if(Math.abs(remaining)<0.005)remaining=0;
+            double remaining=priorBal+run-paidNow;if(Math.abs(remaining)<0.005)remaining=0;
             remainingLabel.setText("المتبقي: "+fmt(remaining)+" ريال");
             remainingLabel.setTextColor(remaining>0.005?RED:GREEN);
             updateCustomerBalance.run();
@@ -1063,12 +1090,15 @@ public class MainActivity extends Activity {
         long cid=cleanCustomer.isEmpty()?-1:db.customerIdByName(cleanCustomer);
         double balanceAfter=0;
         if(cid>0){
-            balanceAfter=db.balance(cid)+total;
+            double prior=db.balance(cid);
             if(edit){
                 String oldCustomer=db.invoiceCustomer(oldId);
                 double oldTotal=db.invoiceTotal(oldId);
-                if(oldCustomer.equals(cleanCustomer)) balanceAfter-=oldTotal;
+                double oldPaid=db.invoicePaid(oldId);
+                double oldImpact=oldTotal-oldPaid;
+                if(oldCustomer.equalsIgnoreCase(cleanCustomer)) prior-=oldImpact;
             }
+            balanceAfter=prior+total;
             if(Math.abs(balanceAfter)<0.005) balanceAfter=0;
         }
         String s=receiptTextFromLines(no,cleanCustomer,lines,total,cid,balanceAfter);
@@ -1419,6 +1449,41 @@ public class MainActivity extends Activity {
 
     void invoiceHistory(){
         base("سجل الفواتير");
+
+        // زر عائم مدور لإضافة فاتورة بيع جديدة
+        if(root.getChildCount()>1){
+            View sv=root.getChildAt(1);
+            root.removeView(sv);
+
+            FrameLayout frame=new FrameLayout(this);
+            frame.addView(sv,new FrameLayout.LayoutParams(-1,-1));
+
+            Button fab=new Button(this);
+            fab.setText("＋");
+            fab.setTextSize(26);
+            fab.setTextColor(Color.WHITE);
+            fab.setGravity(Gravity.CENTER);
+            fab.setIncludeFontPadding(false);
+            GradientDrawable fabBg=new GradientDrawable();
+            fabBg.setShape(GradientDrawable.OVAL);
+            fabBg.setColor(GREEN);
+            if(Build.VERSION.SDK_INT>=21){
+                fab.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(Color.rgb(180,240,200)),fabBg,null));
+            }else{
+                fab.setBackground(fabBg);
+            }
+            fab.setElevation(dp(8));
+            fab.setContentDescription("إضافة فاتورة بيع جديدة");
+            fab.setOnClickListener(v->invoice());
+
+            FrameLayout.LayoutParams fp=new FrameLayout.LayoutParams(dp(58),dp(58));
+            fp.gravity=Gravity.BOTTOM|Gravity.LEFT;
+            fp.setMargins(dp(18),0,dp(18),dp(18));
+            frame.addView(fab,fp);
+
+            root.addView(frame,new LinearLayout.LayoutParams(-1,0,1));
+            content.setPadding(dp(5),dp(4),dp(5),dp(80));
+        }
 
         // شريط الإحصائيات السريع
         int totalInvoices=db.invoiceCount();
@@ -5577,7 +5642,10 @@ public class MainActivity extends Activity {
         void deleteInvoiceTransaction(String no){deleteInvoiceTransactions(no);}
         void deleteInvoiceTransactions(String no){
             SQLiteDatabase d=getWritableDatabase();
-            d.delete("transactions","details=? OR details=?",new String[]{"فاتورة مبيعات رقم "+no,"دفعة فاتورة رقم "+no});
+            String clean=no==null?"":no.trim();
+            d.delete("transactions","details=? OR details=? OR details=? OR details=?",
+                new String[]{"فاتورة مبيعات رقم "+clean,"دفعة فاتورة رقم "+clean,
+                             "فاتورة مبيعات رقم "+no,"دفعة فاتورة رقم "+no});
         }
         void addPaymentTransaction(long id,double a,String details,String date){if(id<1||a<=0)return;addTransaction(id,a,details,0,date);}
         void addTransactionOnce(long id,double a,String details,String date){if(id>0)addTransaction(id,a,details,1,date);}
