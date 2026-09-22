@@ -1129,6 +1129,8 @@ public class MainActivity extends Activity {
         String storedCustomer=cashCustomer?"نقدي":customerName;
         long cid=cashCustomer?-1:db.customer(storedCustomer,phone==null?"":phone);
         String date=db.now();
+        SQLiteDatabase txDb=db.getWritableDatabase();
+        txDb.beginTransaction();
         try{
             if(edit && oldId>0) db.revertStockFromInvoice(oldId);
             if(edit){
@@ -1147,12 +1149,15 @@ public class MainActivity extends Activity {
                 if(total>0) db.addTransactionOnce(cid,total,"فاتورة مبيعات رقم "+no,date);
                 if(paid>0) db.addPaymentTransaction(cid,paid,"دفعة فاتورة رقم "+no,date);
             }
+            txDb.setTransactionSuccessful();
             cacheLastInvoice(no,storedCustomer,lines,total,date);
             clearInvoiceDraft();
             saveReceiptImage(no,storedCustomer,lines,total);
             showPostSaveActions(no,storedCustomer,lines,total,cid,paid);
         }catch(Exception ex){
             Toast.makeText(this,"تعذر حفظ الفاتورة بالكامل. لم يتم اعتماد العملية.",Toast.LENGTH_LONG).show();
+        }finally{
+            txDb.endTransaction();
         }
     }
     
