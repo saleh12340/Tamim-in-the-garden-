@@ -108,6 +108,7 @@ export default function SalesInvoiceScreen({ data, onSaveInvoice, onOpenReceipt,
       name: itemName.trim(),
       qty: q,
       price: Math.round(p),
+      cost: Number(selectedInventoryItem?.purchasePrice || inventory.find((x) => x.name.trim().toLowerCase() === itemName.trim().toLowerCase())?.purchasePrice || 0),
       total: Math.round(t)
     }]);
 
