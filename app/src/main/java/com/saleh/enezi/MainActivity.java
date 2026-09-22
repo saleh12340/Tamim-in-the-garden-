@@ -829,14 +829,10 @@ public class MainActivity extends Activity {
         table.addView(head,new LinearLayout.LayoutParams(-1,dp(32)));
         addSpaceTo(table,4);
 
-        ScrollView tableScroll=new ScrollView(this);
-        tableScroll.setFillViewport(true);
-        tableScroll.setVerticalScrollBarEnabled(true);
         LinearLayout rows=new LinearLayout(this);
         rows.setOrientation(LinearLayout.VERTICAL);
         rows.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        tableScroll.addView(rows,new ViewGroup.LayoutParams(-1,-2));
-        table.addView(tableScroll,new LinearLayout.LayoutParams(-1,dp(180)));
+        table.addView(rows,new LinearLayout.LayoutParams(-1,-2));
         invoiceBox.addView(table,new LinearLayout.LayoutParams(-1,-2));
         addSpaceTo(invoiceBox,6);
 
@@ -1306,10 +1302,13 @@ public class MainActivity extends Activity {
         }
 
         LinearLayout actions1=new LinearLayout(this);actions1.setOrientation(LinearLayout.HORIZONTAL);actions1.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        Button share=button("📤 مشاركة واتساب");share.setTextColor(Color.WHITE);share.setBackground(rounded(GREEN,dp(10)));
-        Button printBtn=button("🖨️ طباعة 58mm");printBtn.setTextColor(Color.WHITE);printBtn.setBackground(rounded(DARK,dp(10)));
-        actions1.addView(share,new LinearLayout.LayoutParams(0,dp(42),1));
-        LinearLayout.LayoutParams plp=new LinearLayout.LayoutParams(0,dp(42),1); plp.setMargins(dp(6),0,0,0);
+        Button share=button("📤 واتساب");share.setTextColor(Color.WHITE);share.setBackground(rounded(GREEN,dp(10)));
+        Button smsBtn=button("✉️ SMS");smsBtn.setTextColor(GREEN);smsBtn.setBackground(outline(CARD,10));
+        Button printBtn=button("🖨️ طباعة");printBtn.setTextColor(Color.WHITE);printBtn.setBackground(rounded(DARK,dp(10)));
+        actions1.addView(share,new LinearLayout.LayoutParams(0,dp(42),1.1f));
+        LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(0,dp(42),0.9f); slp.setMargins(dp(5),0,0,0);
+        actions1.addView(smsBtn,slp);
+        LinearLayout.LayoutParams plp=new LinearLayout.LayoutParams(0,dp(42),1f); plp.setMargins(dp(5),0,0,0);
         actions1.addView(printBtn,plp);
         box.addView(actions1);
         addSpaceTo(box,6);
@@ -1325,7 +1324,12 @@ public class MainActivity extends Activity {
         share.setOnClickListener(v->{
             dialog.dismiss();
             invoiceHistory();
-            shareReceiptImageAndText(no,customer,lines,total);
+            shareReceiptImageAndText(no,customer,lines,total,paid);
+        });
+        smsBtn.setOnClickListener(v->{
+            dialog.dismiss();
+            invoiceHistory();
+            shareInvoiceSms(no,customer,lines,total,paid);
         });
         printBtn.setOnClickListener(v->{
             printInvoiceBluetooth(no,customer,lines,total);
@@ -1525,7 +1529,14 @@ public class MainActivity extends Activity {
         shareBtn.setTextColor(Color.WHITE); shareBtn.setBackground(rounded(GREEN,dp(10)));
         shareBtn.setOnClickListener(v->{
             dlg.dismiss();
-            shareOperation(customer,details,amount,type,invNo);
+            shareOperationImage(customer,details,amount,type,invNo);
+        });
+
+        Button smsBtn=button("✉️ SMS");
+        smsBtn.setTextColor(Color.rgb(20,100,50)); smsBtn.setBackground(outline(CARD,10));
+        smsBtn.setOnClickListener(v->{
+            dlg.dismiss();
+            shareOperationSms(customer,details,amount,type,invNo);
         });
 
         Button printBtn=button("🖨️ طباعة 58mm");
@@ -1535,8 +1546,10 @@ public class MainActivity extends Activity {
             printOperation(customer,details,amount,type,invNo);
         });
 
-        row1.addView(shareBtn,new LinearLayout.LayoutParams(0,dp(38),1));
-        LinearLayout.LayoutParams pbp=new LinearLayout.LayoutParams(0,dp(38),1); pbp.setMargins(dp(4),0,0,0);
+        row1.addView(shareBtn,new LinearLayout.LayoutParams(0,dp(38),1.1f));
+        LinearLayout.LayoutParams sbp=new LinearLayout.LayoutParams(0,dp(38),0.9f); sbp.setMargins(dp(4),0,0,0);
+        row1.addView(smsBtn,sbp);
+        LinearLayout.LayoutParams pbp=new LinearLayout.LayoutParams(0,dp(38),1f); pbp.setMargins(dp(4),0,0,0);
         row1.addView(printBtn,pbp);
         actionsGrid.addView(row1,new LinearLayout.LayoutParams(-1,dp(40)));
 
@@ -1897,16 +1910,29 @@ public class MainActivity extends Activity {
         box.addView(scrollBody,new LinearLayout.LayoutParams(-1,0,1));
         addSpaceTo(box,8);
 
-        // Action Buttons: Share, Print, Edit
+        final double paid=db.invoicePaid(id);
+
+        // Action Buttons: Share, SMS, Print, Edit
         LinearLayout actionsGrid=new LinearLayout(this);
-        actionsGrid.setOrientation(LinearLayout.HORIZONTAL);
+        actionsGrid.setOrientation(LinearLayout.VERTICAL);
         actionsGrid.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        LinearLayout row1=new LinearLayout(this);
+        row1.setOrientation(LinearLayout.HORIZONTAL);
+        row1.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
         Button shareBtn=button("📤 واتساب");
         shareBtn.setTextColor(Color.WHITE); shareBtn.setBackground(rounded(GREEN,dp(10)));
         shareBtn.setOnClickListener(v->{
             dlg.dismiss();
-            shareReceiptImageAndText(no,customer,lineList,total);
+            shareReceiptImageAndText(no,customer,lineList,total,paid);
+        });
+
+        Button smsBtn=button("✉️ SMS");
+        smsBtn.setTextColor(Color.rgb(20,100,50)); smsBtn.setBackground(outline(CARD,10));
+        smsBtn.setOnClickListener(v->{
+            dlg.dismiss();
+            shareInvoiceSms(no,customer,lineList,total,paid);
         });
 
         Button printBtn=button("🖨️ طباعة");
@@ -1916,18 +1942,26 @@ public class MainActivity extends Activity {
             printInvoiceBluetooth(no,customer,lineList,total);
         });
 
-        Button editBtn=button("✏️ تعديل");
+        row1.addView(shareBtn,new LinearLayout.LayoutParams(0,dp(38),1.1f));
+        LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(0,dp(38),0.9f); slp.setMargins(dp(4),0,0,0);
+        row1.addView(smsBtn,slp);
+        LinearLayout.LayoutParams plp=new LinearLayout.LayoutParams(0,dp(38),1f); plp.setMargins(dp(4),0,0,0);
+        row1.addView(printBtn,plp);
+        actionsGrid.addView(row1,new LinearLayout.LayoutParams(-1,dp(40)));
+
+        LinearLayout row2=new LinearLayout(this);
+        row2.setOrientation(LinearLayout.HORIZONTAL);
+        row2.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        row2.setPadding(0,dp(4),0,0);
+
+        Button editBtn=button("✏️ تعديل الفاتورة");
         editBtn.setTextColor(BLUE); editBtn.setBackground(outline(CARD,10));
         editBtn.setOnClickListener(v->{
             dlg.dismiss();
             invoice(true,id);
         });
-
-        actionsGrid.addView(shareBtn,new LinearLayout.LayoutParams(0,dp(38),1));
-        LinearLayout.LayoutParams plp=new LinearLayout.LayoutParams(0,dp(38),1); plp.setMargins(dp(4),0,0,0);
-        actionsGrid.addView(printBtn,plp);
-        LinearLayout.LayoutParams elp=new LinearLayout.LayoutParams(0,dp(38),1); elp.setMargins(dp(4),0,0,0);
-        actionsGrid.addView(editBtn,elp);
+        row2.addView(editBtn,new LinearLayout.LayoutParams(-1,dp(36)));
+        actionsGrid.addView(row2,new LinearLayout.LayoutParams(-1,dp(40)));
 
         box.addView(actionsGrid,new LinearLayout.LayoutParams(-1,-2));
 
@@ -1940,25 +1974,249 @@ public class MainActivity extends Activity {
         dlg.show();
     }
     void showPurchaseInvoiceDialog(long id,String no,String supplier,double total,String date){
-        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(10),dp(5),dp(10),dp(5));
-        TextView head=tv("فاتورة شراء رقم "+no,18);head.setTextColor(GOLD);head.setTypeface(Typeface.DEFAULT,Typeface.BOLD);head.setGravity(Gravity.CENTER);box.addView(head,new LinearLayout.LayoutParams(-1,dp(38)));
-        box.addView(tv("المورد: "+(supplier==null||supplier.isEmpty()?"بدون مورد":supplier)+"\nالتاريخ والوقت: "+date,12),new LinearLayout.LayoutParams(-1,dp(50)));
-        sectionInside(box,"الأصناف");
-        Cursor c=db.purchaseLines(id);int count=0;
+        final Dialog dlg=new Dialog(this);
+        LinearLayout box=new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(14),dp(12),dp(14),dp(12));
+        box.setBackground(rounded(CARD,dp(18)));
+        box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        // Header Banner
+        LinearLayout head=new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        TextView iconBadge=tv("📦",20);
+        iconBadge.setGravity(Gravity.CENTER);
+        head.addView(iconBadge,new LinearLayout.LayoutParams(dp(36),dp(36)));
+
+        LinearLayout headTitles=new LinearLayout(this);
+        headTitles.setOrientation(LinearLayout.VERTICAL);
+        headTitles.setPadding(dp(6),0,dp(6),0);
+
+        TextView tTitle=tv("فاتورة شراء #"+no,15);
+        tTitle.setTextColor(GOLD); tTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        TextView tSupplier=tv("المورد: "+(supplier==null||supplier.trim().isEmpty()?"بدون مورد":supplier)+"  •  "+date,11);
+        tSupplier.setTextColor(TEXT);
+        headTitles.addView(tTitle,new LinearLayout.LayoutParams(-1,dp(22)));
+        headTitles.addView(tSupplier,new LinearLayout.LayoutParams(-1,dp(18)));
+        head.addView(headTitles,new LinearLayout.LayoutParams(0,dp(40),1));
+
+        Button closeBtn=button("✕");
+        closeBtn.setTextColor(MUTED); closeBtn.setBackgroundColor(Color.TRANSPARENT);
+        closeBtn.setOnClickListener(v->dlg.dismiss());
+        head.addView(closeBtn,new LinearLayout.LayoutParams(dp(36),dp(36)));
+        box.addView(head,new LinearLayout.LayoutParams(-1,dp(44)));
+        addSpaceTo(box,6);
+
+        // Total Banner
+        LinearLayout amountCard=new LinearLayout(this);
+        amountCard.setOrientation(LinearLayout.VERTICAL);
+        amountCard.setGravity(Gravity.CENTER);
+        amountCard.setPadding(dp(10),dp(6),dp(10),dp(6));
+        GradientDrawable acBg=new GradientDrawable();
+        acBg.setColor(Color.rgb(255,250,242));
+        acBg.setCornerRadius(dp(12));
+        acBg.setStroke(dp(1),Color.rgb(240,215,160));
+        amountCard.setBackground(acBg);
+
+        TextView amtVal=tv("إجمالي المشتريات: "+fmt(total)+" ريال",16);
+        amtVal.setTextColor(GOLD); amtVal.setTypeface(Typeface.DEFAULT,Typeface.BOLD); amtVal.setGravity(Gravity.CENTER);
+        amountCard.addView(amtVal,new LinearLayout.LayoutParams(-1,dp(26)));
+        box.addView(amountCard,new LinearLayout.LayoutParams(-1,dp(40)));
+        addSpaceTo(box,6);
+
+        // Items List Scroll
+        ScrollView scrollBody=new ScrollView(this);
+        LinearLayout itemsBody=new LinearLayout(this);
+        itemsBody.setOrientation(LinearLayout.VERTICAL);
+        itemsBody.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        TextView itemsTitle=tv("أصناف فاتورة الشراء:",12);
+        itemsTitle.setTextColor(GOLD); itemsTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        itemsBody.addView(itemsTitle,new LinearLayout.LayoutParams(-1,dp(22)));
+
+        Cursor c=db.purchaseLines(id);
+        int count=0;
         while(c.moveToNext()){
-            String n=c.getString(1);double q=c.getDouble(2),cost=c.getDouble(3),sale=c.getDouble(4),t=c.getDouble(5);
-            TextView row=tv(n+"  ×  "+fmt(q)+"  |  تكلفة الوحدة: "+fmt(cost)+"  |  البيع: "+fmt(sale)+"  |  "+fmt(t)+" ريال",10);
-            row.setBackground(outline(Color.rgb(248,250,248),8));row.setMaxLines(3);row.setEllipsize(null);box.addView(row,new LinearLayout.LayoutParams(-1,dp(42)));count++;
+            String n=c.getString(1);
+            double q=c.getDouble(2),cost=c.getDouble(3),sale=c.getDouble(4),t=c.getDouble(5);
+
+            LinearLayout row=new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+            row.setPadding(dp(8),dp(5),dp(8),dp(5));
+            row.setBackground(outline(Color.rgb(248,250,248),8));
+
+            LinearLayout rowTop=new LinearLayout(this);
+            rowTop.setOrientation(LinearLayout.HORIZONTAL);
+            rowTop.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+            TextView nTv=tv(n,12); nTv.setTextColor(TEXT); nTv.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+            rowTop.addView(nTv,new LinearLayout.LayoutParams(0,-2,1.2f));
+
+            TextView qTv=tv("× "+fmt(q),11.5f); qTv.setTextColor(MUTED); qTv.setGravity(Gravity.CENTER);
+            rowTop.addView(qTv,new LinearLayout.LayoutParams(0,-2,0.6f));
+
+            TextView tTv=tv(fmt(t)+" ر.ي",12.5f); tTv.setTextColor(GOLD); tTv.setTypeface(Typeface.DEFAULT,Typeface.BOLD); tTv.setGravity(Gravity.LEFT);
+            rowTop.addView(tTv,new LinearLayout.LayoutParams(0,-2,0.8f));
+            row.addView(rowTop,new LinearLayout.LayoutParams(-1,-2));
+
+            TextView pInfo=tv("تكلفة الوحدة: "+fmt(cost)+" ر.ي  •  سعر البيع المقترح: "+fmt(sale)+" ر.ي",10);
+            pInfo.setTextColor(MUTED);
+            row.addView(pInfo,new LinearLayout.LayoutParams(-1,-2));
+
+            itemsBody.addView(row,new LinearLayout.LayoutParams(-1,-2));
+            addSpaceTo(itemsBody,4);
+            count++;
         }
-        c.close();if(count==0)box.addView(tv("لا توجد تفاصيل أصناف محفوظة لهذه الفاتورة.",11),new LinearLayout.LayoutParams(-1,dp(34)));
-        TextView totalV=tv("الإجمالي: "+fmt(total)+" ريال",17);totalV.setTextColor(GREEN);totalV.setTypeface(Typeface.DEFAULT,Typeface.BOLD);box.addView(totalV,new LinearLayout.LayoutParams(-1,dp(42)));
-        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("فاتورة الشراء").setView(box)
-            .setPositiveButton("مشاركة",null).setNeutralButton("طباعة",null).setNegativeButton("إغلاق",null).create();
-        dialog.setOnShowListener(x->{
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{dialog.dismiss();sharePurchaseInvoice(id,no,supplier,total,date);});
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->{dialog.dismiss();printPurchaseInvoice(id,no,supplier,total,date);});
+        c.close();
+
+        if(count==0){
+            TextView emptyTv=tv("لا توجد تفاصيل أصناف محفوظة لهذه الفاتورة",11);
+            emptyTv.setTextColor(MUTED); emptyTv.setGravity(Gravity.CENTER);
+            itemsBody.addView(emptyTv,new LinearLayout.LayoutParams(-1,dp(30)));
+        }
+
+        scrollBody.addView(itemsBody);
+        box.addView(scrollBody,new LinearLayout.LayoutParams(-1,0,1));
+        addSpaceTo(box,8);
+
+        // Action Buttons: WhatsApp, SMS, Print
+        LinearLayout actionsGrid=new LinearLayout(this);
+        actionsGrid.setOrientation(LinearLayout.VERTICAL);
+        actionsGrid.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        LinearLayout row1=new LinearLayout(this);
+        row1.setOrientation(LinearLayout.HORIZONTAL);
+        row1.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        Button shareBtn=button("📤 واتساب");
+        shareBtn.setTextColor(Color.WHITE); shareBtn.setBackground(rounded(GREEN,dp(10)));
+        shareBtn.setOnClickListener(v->{
+            dlg.dismiss();
+            sharePurchaseInvoice(id,no,supplier,total,date);
         });
-        dialog.show();
+
+        Button smsBtn=button("✉️ SMS");
+        smsBtn.setTextColor(Color.rgb(180,120,20)); smsBtn.setBackground(outline(CARD,10));
+        smsBtn.setOnClickListener(v->{
+            dlg.dismiss();
+            sharePurchaseInvoiceSms(id,no,supplier,total,date);
+        });
+
+        Button printBtn=button("🖨️ طباعة");
+        printBtn.setTextColor(GREEN); printBtn.setBackground(outline(CARD,10));
+        printBtn.setOnClickListener(v->{
+            dlg.dismiss();
+            printPurchaseInvoice(id,no,supplier,total,date);
+        });
+
+        row1.addView(shareBtn,new LinearLayout.LayoutParams(0,dp(38),1.1f));
+        LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(0,dp(38),0.9f); slp.setMargins(dp(4),0,0,0);
+        row1.addView(smsBtn,slp);
+        LinearLayout.LayoutParams plp=new LinearLayout.LayoutParams(0,dp(38),1f); plp.setMargins(dp(4),0,0,0);
+        row1.addView(printBtn,plp);
+        actionsGrid.addView(row1,new LinearLayout.LayoutParams(-1,dp(40)));
+
+        box.addView(actionsGrid,new LinearLayout.LayoutParams(-1,-2));
+
+        dlg.setContentView(box);
+        if(dlg.getWindow()!=null){
+            dlg.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            dlg.getWindow().setLayout(dp(340),dp(440));
+            dlg.getWindow().setGravity(Gravity.CENTER);
+        }
+        dlg.show();
+    }
+
+    void sharePurchaseInvoiceSms(long id,String no,String supplier,double total,String date){
+        try{
+            ArrayList<PurchaseLine> lines=loadPurchaseLines(id);
+            String text=purchaseReceiptText(no,supplier,lines,total,date);
+            String phone=db.supplierPhoneByName(supplier);
+            shareSmsToCustomer(phone,text);
+        }catch(Exception e){Toast.makeText(this,"تعذر إرسال الرسالة",Toast.LENGTH_SHORT).show();}
+    }
+
+    void showPostSavePurchaseActions(long id,String no,String supplier,ArrayList<PurchaseLine> lines,double total,String date){
+        final Dialog dialog=new Dialog(this);
+        LinearLayout box=new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(16),dp(14),dp(16),dp(14));
+        box.setBackground(rounded(CARD,dp(18)));
+        box.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        TextView icon=tv("📦",32);icon.setGravity(Gravity.CENTER);
+        box.addView(icon,new LinearLayout.LayoutParams(-1,dp(42)));
+
+        TextView title=tv("تم حفظ فاتورة الشراء بنجاح",16);
+        title.setTextColor(GOLD);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);title.setGravity(Gravity.CENTER);
+        box.addView(title,new LinearLayout.LayoutParams(-1,dp(26)));
+
+        TextView sub=tv("فاتورة شراء #"+no+" • "+(supplier==null||supplier.isEmpty()?"بدون مورد":supplier)+" • "+lines.size()+" أصناف",11.5f);
+        sub.setTextColor(MUTED);sub.setGravity(Gravity.CENTER);
+        box.addView(sub,new LinearLayout.LayoutParams(-1,dp(20)));
+        addSpaceTo(box,8);
+
+        LinearLayout totBox=new LinearLayout(this);
+        totBox.setOrientation(LinearLayout.VERTICAL);
+        totBox.setGravity(Gravity.CENTER);
+        totBox.setPadding(dp(10),dp(6),dp(10),dp(6));
+        totBox.setBackground(outline(Color.rgb(255,250,240),10));
+        TextView amtTv=tv("إجمالي المشتريات: "+fmt(total)+" ريال",14);
+        amtTv.setTextColor(GOLD);amtTv.setTypeface(Typeface.DEFAULT,Typeface.BOLD);amtTv.setGravity(Gravity.CENTER);
+        totBox.addView(amtTv,new LinearLayout.LayoutParams(-1,-2));
+        box.addView(totBox,new LinearLayout.LayoutParams(-1,dp(36)));
+        addSpaceTo(box,10);
+
+        LinearLayout actions1=new LinearLayout(this);
+        actions1.setOrientation(LinearLayout.HORIZONTAL);
+        actions1.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        Button share=button("📤 واتساب");share.setTextColor(Color.WHITE);share.setBackground(rounded(GREEN,dp(10)));
+        Button smsBtn=button("✉️ SMS");smsBtn.setTextColor(Color.rgb(180,120,20));smsBtn.setBackground(outline(CARD,10));
+        Button printBtn=button("🖨️ طباعة");printBtn.setTextColor(Color.WHITE);printBtn.setBackground(rounded(DARK,dp(10)));
+
+        actions1.addView(share,new LinearLayout.LayoutParams(0,dp(42),1.1f));
+        LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(0,dp(42),0.9f); slp.setMargins(dp(5),0,0,0);
+        actions1.addView(smsBtn,slp);
+        LinearLayout.LayoutParams plp=new LinearLayout.LayoutParams(0,dp(42),1f); plp.setMargins(dp(5),0,0,0);
+        actions1.addView(printBtn,plp);
+        box.addView(actions1);
+        addSpaceTo(box,6);
+
+        LinearLayout actions2=new LinearLayout(this);
+        actions2.setOrientation(LinearLayout.HORIZONTAL);
+        actions2.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        Button newP=button("＋ فاتورة جديدة");newP.setTextColor(GOLD);newP.setBackground(outline(Color.rgb(255,252,245),10));
+        Button close=button("✓ إقفال والعودة للسجل");close.setTextColor(MUTED);close.setBackground(outline(CARD,10));
+
+        actions2.addView(newP,new LinearLayout.LayoutParams(0,dp(38),1));
+        LinearLayout.LayoutParams clp=new LinearLayout.LayoutParams(0,dp(38),1); clp.setMargins(dp(6),0,0,0);
+        actions2.addView(close,clp);
+        box.addView(actions2);
+
+        share.setOnClickListener(v->{
+            dialog.dismiss();
+            purchaseInvoices();
+            sharePurchaseInvoice(id,no,supplier,total,date);
+        });
+        smsBtn.setOnClickListener(v->{
+            dialog.dismiss();
+            purchaseInvoices();
+            sharePurchaseInvoiceSms(id,no,supplier,total,date);
+        });
+        printBtn.setOnClickListener(v->{
+            printPurchaseInvoice(id,no,supplier,total,date);
+        });
+        newP.setOnClickListener(v->{dialog.dismiss();newPurchaseInvoice();});
+        close.setOnClickListener(v->{dialog.dismiss();purchaseInvoices();});
+
+        dialog.setContentView(box);dialog.setCanceledOnTouchOutside(false);dialog.setCancelable(false);dialog.show();
+        if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);dialog.getWindow().setLayout(dp(340),WindowManager.LayoutParams.WRAP_CONTENT);dialog.getWindow().setGravity(Gravity.CENTER);}
     }
 
     ArrayList<PurchaseLine> loadPurchaseLines(long id){
@@ -2243,6 +2501,224 @@ public class MainActivity extends Activity {
             try{i.setPackage("com.whatsapp");startActivity(i);}
             catch(Exception e){i.setPackage(null);startActivity(Intent.createChooser(i,"مشاركة كشف الحساب PDF"));}
         }catch(Exception e){Toast.makeText(this,"تعذر إنشاء كشف الحساب PDF",Toast.LENGTH_LONG).show();}
+    }
+
+    File createInvoicePdf(String no,String customer,ArrayList<Line> lines,double total,double paid,double balanceAfter,String date){
+        File dir=new File(getCacheDir(),"pdf");if(!dir.exists())dir.mkdirs();
+        File file=new File(dir,"فاتورة_"+no+"_"+System.currentTimeMillis()+".pdf");
+        android.graphics.pdf.PdfDocument pdf=new android.graphics.pdf.PdfDocument();
+        final int pageW=420,pageH=595,margin=24;
+        android.graphics.pdf.PdfDocument.Page page=pdf.startPage(new android.graphics.pdf.PdfDocument.PageInfo.Builder(pageW,pageH,1).create());
+        Canvas canvas=page.getCanvas();
+
+        Paint fillPaint=new Paint(Paint.ANTI_ALIAS_FLAG);
+        Paint strokePaint=new Paint(Paint.ANTI_ALIAS_FLAG);strokePaint.setStyle(Paint.Style.STROKE);strokePaint.setStrokeWidth(1);strokePaint.setColor(Color.rgb(210,225,215));
+        TextPaint titleP=new TextPaint(Paint.ANTI_ALIAS_FLAG);titleP.setColor(GREEN);titleP.setTextSize(18);titleP.setTypeface(Typeface.create("sans",Typeface.BOLD));
+        TextPaint subP=new TextPaint(Paint.ANTI_ALIAS_FLAG);subP.setColor(DARK);subP.setTextSize(10.5f);subP.setTypeface(Typeface.create("sans",Typeface.NORMAL));
+        TextPaint headerP=new TextPaint(Paint.ANTI_ALIAS_FLAG);headerP.setColor(Color.WHITE);headerP.setTextSize(11);headerP.setTypeface(Typeface.create("sans",Typeface.BOLD));
+        TextPaint cellP=new TextPaint(Paint.ANTI_ALIAS_FLAG);cellP.setColor(TEXT);cellP.setTextSize(10);cellP.setTypeface(Typeface.create("sans",Typeface.NORMAL));
+        TextPaint boldCellP=new TextPaint(Paint.ANTI_ALIAS_FLAG);boldCellP.setColor(TEXT);boldCellP.setTextSize(10);boldCellP.setTypeface(Typeface.create("sans",Typeface.BOLD));
+
+        int y=margin;
+
+        // Header Card
+        fillPaint.setColor(Color.rgb(238,247,240));
+        canvas.drawRoundRect(margin,y,pageW-margin,y+52,8,8,fillPaint);
+        canvas.drawRoundRect(margin,y,pageW-margin,y+52,8,8,strokePaint);
+
+        titleP.setTextAlign(Paint.Align.RIGHT);
+        canvas.drawText("بقالة العزي",pageW-margin-12,y+24,titleP);
+        subP.setTextAlign(Paint.Align.RIGHT);
+        canvas.drawText("فاتورة مبيعات #"+no+"  •  "+(date==null||date.isEmpty()?db.now():date),pageW-margin-12,y+42,subP);
+        y+=60;
+
+        // Customer Info
+        String custName=customer==null||customer.trim().isEmpty()?"عميل نقدي":customer.trim();
+        String phone=db.phoneByName(custName);
+        fillPaint.setColor(Color.rgb(250,252,250));
+        canvas.drawRoundRect(margin,y,pageW-margin,y+34,6,6,fillPaint);
+        canvas.drawRoundRect(margin,y,pageW-margin,y+34,6,6,strokePaint);
+
+        boldCellP.setTextAlign(Paint.Align.RIGHT);
+        canvas.drawText("العميل: "+custName+(phone.isEmpty()?"":" ("+phone+")"),pageW-margin-10,y+22,boldCellP);
+        y+=40;
+
+        // Current Operation / Amount Bar
+        double remaining=total-paid;
+        boolean isCash=paid>=total && total>0;
+        fillPaint.setColor(isCash?Color.rgb(240,250,242):(remaining>0?Color.rgb(255,243,243):Color.rgb(240,248,255)));
+        strokePaint.setColor(isCash?Color.rgb(190,235,205):(remaining>0?Color.rgb(250,195,195):Color.rgb(195,225,250)));
+        canvas.drawRoundRect(margin,y,pageW-margin,y+36,6,6,fillPaint);
+        canvas.drawRoundRect(margin,y,pageW-margin,y+36,6,6,strokePaint);
+
+        boldCellP.setTextAlign(Paint.Align.CENTER);
+        boldCellP.setTextSize(12.5f);
+        boldCellP.setColor(isCash?GREEN:(remaining>0?RED:BLUE));
+        String opText=isCash?"مسدد نقداً: "+fmt(total)+" يمني":(paid>0?"عليك: "+fmt(remaining)+" يمني (مدفوع: "+fmt(paid)+")":"عليك: "+fmt(total)+" يمني");
+        canvas.drawText(opText,pageW/2,y+23,boldCellP);
+        y+=42;
+
+        // Table Header
+        int[] colW={180,80,112};
+        fillPaint.setColor(GREEN);
+        canvas.drawRoundRect(margin,y,pageW-margin,y+24,4,4,fillPaint);
+        headerP.setTextAlign(Paint.Align.RIGHT);
+        canvas.drawText("الصنف (حق)",pageW-margin-10,y+16,headerP);
+        headerP.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText("الكمية",pageW-margin-colW[0]-colW[1]/2,y+16,headerP);
+        headerP.setTextAlign(Paint.Align.LEFT);
+        canvas.drawText("الإجمالي",margin+10,y+16,headerP);
+        y+=26;
+
+        // Table Rows
+        int rowH=22;
+        int maxRows=Math.min(lines.size(),14);
+        boldCellP.setTextSize(10);
+        for(int i=0;i<maxRows;i++){
+            Line l=lines.get(i);
+            fillPaint.setColor(i%2==0?Color.rgb(252,254,252):Color.WHITE);
+            canvas.drawRect(margin,y,pageW-margin,y+rowH,fillPaint);
+            strokePaint.setColor(Color.rgb(240,244,240));
+            canvas.drawLine(margin,y+rowH,pageW-margin,y+rowH,strokePaint);
+
+            cellP.setTextAlign(Paint.Align.RIGHT);
+            String iname=l.name==null?"":l.name.trim();
+            if(iname.length()>22) iname=iname.substring(0,22)+"…";
+            canvas.drawText(iname,pageW-margin-10,y+15,cellP);
+
+            cellP.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText(fmt(l.qty),pageW-margin-colW[0]-colW[1]/2,y+15,cellP);
+
+            boldCellP.setTextAlign(Paint.Align.LEFT);
+            boldCellP.setColor(GREEN);
+            canvas.drawText(fmt(l.total)+" ر.ي",margin+10,y+15,boldCellP);
+            boldCellP.setColor(TEXT);
+            y+=rowH;
+        }
+        if(lines.size()>maxRows){
+            cellP.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText("... والمزيد ("+(lines.size()-maxRows)+" أصناف أخرى)",pageW/2,y+14,cellP);
+            y+=18;
+        }
+
+        y+=8;
+        // Total Box
+        fillPaint.setColor(Color.rgb(240,249,242));
+        strokePaint.setColor(Color.rgb(190,230,205));
+        canvas.drawRoundRect(margin,y,pageW-margin,y+36,6,6,fillPaint);
+        canvas.drawRoundRect(margin,y,pageW-margin,y+36,6,6,strokePaint);
+
+        boldCellP.setTextSize(12);
+        boldCellP.setColor(GREEN);
+        boldCellP.setTextAlign(Paint.Align.RIGHT);
+        canvas.drawText("إجمالي الفاتورة:",pageW-margin-12,y+23,boldCellP);
+        boldCellP.setTextAlign(Paint.Align.LEFT);
+        canvas.drawText(fmt(total)+" ريال",margin+12,y+23,boldCellP);
+        y+=42;
+
+        // Final Balance Box
+        if(customer!=null&&!customer.trim().isEmpty()&&Math.abs(balanceAfter)>=0.005){
+            fillPaint.setColor(balanceAfter>0.005?Color.rgb(255,243,243):Color.rgb(240,248,255));
+            strokePaint.setColor(balanceAfter>0.005?Color.rgb(245,200,200):Color.rgb(200,225,250));
+            canvas.drawRoundRect(margin,y,pageW-margin,y+32,6,6,fillPaint);
+            canvas.drawRoundRect(margin,y,pageW-margin,y+32,6,6,strokePaint);
+            boldCellP.setTextSize(11.5f);
+            boldCellP.setColor(balanceColor(balanceAfter));
+            boldCellP.setTextAlign(Paint.Align.CENTER);
+            String bTxt=balanceAfter>0?"الإجمالي - عليك "+fmt(balanceAfter)+" يمني":"الإجمالي - له "+fmt(Math.abs(balanceAfter))+" يمني";
+            canvas.drawText(bTxt,pageW/2,y+20,boldCellP);
+            y+=38;
+        }
+
+        subP.setTextAlign(Paint.Align.CENTER);
+        subP.setColor(MUTED);
+        canvas.drawText("✨ شكراً لتعاملكم معنا ونسعد بخدمتكم دائماً • بقالة العزي ✨",pageW/2,y+16,subP);
+
+        pdf.finishPage(page);
+        try(FileOutputStream out=new FileOutputStream(file)){pdf.writeTo(out);}
+        catch(Exception e){throw new RuntimeException(e);}
+        finally{pdf.close();}
+        return file;
+    }
+
+    void shareInvoicePdf(String no,String customer,ArrayList<Line> lines,double total,double paid,double balanceAfter,String date){
+        try{
+            File file=createInvoicePdf(no,customer,lines,total,paid,balanceAfter,date);
+            Uri uri=FileProvider.getUriForFile(this,getPackageName()+".fileprovider",file);
+            Intent i=new Intent(Intent.ACTION_SEND);
+            i.setType("application/pdf");
+            i.putExtra(Intent.EXTRA_STREAM,uri);
+            String text=invoiceWhatsAppText(no,customer,lines,total,paid,balanceAfter,date);
+            i.putExtra(Intent.EXTRA_TEXT,text);
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            String p=normalizeWhatsAppPhone(db.phoneByName(customer));
+            if(!p.isEmpty())i.putExtra("jid",p+"@s.whatsapp.net");
+            try{
+                i.setPackage("com.whatsapp");startActivity(i);
+            }catch(Exception e){
+                i.setPackage(null);startActivity(Intent.createChooser(i,"مشاركة فاتورة PDF"));
+            }
+        }catch(Exception e){Toast.makeText(this,"تعذر إنشاء فاتورة PDF",Toast.LENGTH_SHORT).show();}
+    }
+
+    void shareSmsToCustomer(String phone,String text){
+        try{
+            String p=phone==null?"":phone.replaceAll("[^0-9+]","");
+            Intent i=new Intent(Intent.ACTION_SENDTO);
+            if(!p.isEmpty()){
+                i.setData(Uri.parse("smsto:"+Uri.encode(p)));
+            }else{
+                i.setData(Uri.parse("smsto:"));
+            }
+            i.putExtra("sms_body",text);
+            i.putExtra(Intent.EXTRA_TEXT,text);
+            startActivity(i);
+        }catch(Exception e){
+            try{
+                Intent i=new Intent(Intent.ACTION_VIEW);
+                i.setType("vnd.android-dir/mms-sms");
+                i.putExtra("sms_body",text);
+                startActivity(i);
+            }catch(Exception ex){
+                shareText(text);
+            }
+        }
+    }
+
+    void shareInvoiceSms(String no,String customer,ArrayList<Line> lines,double total,double paid){
+        long cid=customer==null||customer.trim().isEmpty()?-1:db.customerIdByName(customer.trim());
+        double bal=cid>0?db.balance(cid):0;
+        String text=invoiceWhatsAppText(no,customer,lines,total,paid,bal,db.now());
+        String phone=db.phoneByName(customer);
+        shareSmsToCustomer(phone,text);
+    }
+    void shareInvoiceSms(String no,String customer,ArrayList<Line> lines,double total){
+        double paid=0;
+        long iid=db.invoiceIdByNo(no);
+        if(iid>0) paid=db.invoicePaid(iid);
+        shareInvoiceSms(no,customer,lines,total,paid);
+    }
+
+    void shareOperationSms(String customer,String details,double amount,int type,String invNo){
+        String text=compactOperationText(customer,details,amount,type,invNo);
+        String phone=db.phoneByName(customer);
+        shareSmsToCustomer(phone,text);
+    }
+
+    void shareCustomerBalanceSms(String customer){
+        double bal=db.balanceByName(customer);
+        String phone=db.phoneByName(customer);
+        StringBuilder s=new StringBuilder();
+        s.append("بقالة العزي :\n");
+        if(customer!=null&&!customer.trim().isEmpty()) s.append(customer.trim()).append("\n");
+        if(Math.abs(bal)<0.005){
+            s.append("الإجمالي - خالص (0 يمني)");
+        }else if(bal>0){
+            s.append("الإجمالي - عليك ").append(fmt(bal)).append(" يمني");
+        }else{
+            s.append("الإجمالي - له ").append(fmt(Math.abs(bal))).append(" يمني");
+        }
+        shareSmsToCustomer(phone,s.toString());
     }
 
     void shareText(String s){Intent i=new Intent(Intent.ACTION_SEND);i.setType("text/plain");i.putExtra(Intent.EXTRA_TEXT,s);startActivity(Intent.createChooser(i,"إرسال"));}
@@ -2566,38 +3042,58 @@ public class MainActivity extends Activity {
 
     String invoiceWhatsAppText(String no,String customer,ArrayList<Line> lines,double total,double paid,double balanceAfter,String date){
         StringBuilder s=new StringBuilder();
-        s.append("🧾 *بقالة العزي*\n");
-        s.append("━━━━━━━━━━━━━━━━━━\n");
-        s.append("📋 *فاتورة مبيعات رقم:* #").append(no).append("\n");
-        if(customer!=null&&!customer.trim().isEmpty())s.append("👤 *العميل:* ").append(customer.trim()).append("\n");
-        s.append("📅 *التاريخ:* ").append(date==null||date.isEmpty()?db.now():date).append("\n");
-        s.append("━━━━━━━━━━━━━━━━━━\n");
-        s.append("🛒 *الأصناف والكميات:*\n");
-        for(Line l:lines){
-            String n=l.name==null?"":l.name.trim();
-            s.append("▪️ ").append(n).append(" × ").append(fmt(l.qty)).append(" = ").append(fmt(l.total)).append(" ر.ي\n");
+        s.append("بقالة العزي :\n");
+        if(no!=null&&!no.trim().isEmpty()){
+            s.append("#").append(no.trim()).append("\n");
         }
-        s.append("━━━━━━━━━━━━━━━━━━\n");
-        s.append("💰 *إجمالي الفاتورة:* ").append(fmt(total)).append(" ريال\n");
-        if(paid>0){
-            s.append("💵 *المدفوع نقداً:* ").append(fmt(paid)).append(" ريال\n");
-            if(total>paid) s.append("⏳ *المتبقي من الفاتورة:* ").append(fmt(total-paid)).append(" ريال\n");
+        String cust=customer==null?"":customer.trim();
+        if(!cust.isEmpty()){
+            s.append(cust).append("\n");
         }
-        if(customer!=null&&!customer.trim().isEmpty()){
-            s.append("📊 *الرصيد الإجمالي الحالي:* ").append(balanceText(balanceAfter)).append("\n");
+        double remaining=total-paid;
+        if(paid>=total && total>0){
+            s.append("مسدد نقداً ").append(fmt(total)).append(" يمني\n");
+        }else if(paid>0){
+            s.append("عليك ").append(fmt(remaining)).append(" يمني (مدفوع: ").append(fmt(paid)).append(" يمني)\n");
+        }else{
+            s.append("عليك ").append(fmt(total)).append(" يمني\n");
         }
-        s.append("━━━━━━━━━━━━━━━━━━\n");
-        s.append("✨ *شكراً لتعاملكم معنا ونسعد بخدمتكم دائماً* ✨");
+        s.append("حق ");
+        if(lines!=null&&!lines.isEmpty()){
+            StringBuilder items=new StringBuilder();
+            for(int i=0;i<lines.size();i++){
+                Line l=lines.get(i);
+                if(i>0) items.append("، ");
+                String iname=l.name==null?"":l.name.trim();
+                items.append(iname);
+                if(l.qty!=1){
+                    items.append(" (").append(fmt(l.qty)).append(")");
+                }
+            }
+            s.append(items.toString());
+        }else{
+            s.append(!cust.isEmpty()?cust:"مشتريات");
+        }
+        s.append("\n\n");
+        if(!cust.isEmpty()&&Math.abs(balanceAfter)>=0.005){
+            if(balanceAfter>0.005){
+                s.append("الإجمالي - عليك ").append(fmt(balanceAfter)).append(" يمني");
+            }else{
+                s.append("الإجمالي - له ").append(fmt(Math.abs(balanceAfter))).append(" يمني");
+            }
+        }else{
+            s.append("الإجمالي - خالص (0 يمني)");
+        }
         return s.toString();
     }
 
     Bitmap invoiceReceiptBitmap(String no,String customer,ArrayList<Line> lines,double total,double paid,double balanceAfter,String date){
-        final int width=576;
-        final int margin=24;
-        final int lineH=32;
+        final int width=480;
+        final int margin=18;
+        final int lineH=28;
         int rowCount=lines.size();
-        int baseHeight=320+rowCount*lineH+(paid>0?70:0)+(customer!=null&&!customer.isEmpty()?50:0);
-        Bitmap b=Bitmap.createBitmap(width,Math.max(480,baseHeight),Bitmap.Config.ARGB_8888);
+        int baseHeight=270+rowCount*lineH+(paid>0?48:0)+(customer!=null&&!customer.isEmpty()&&Math.abs(balanceAfter)>=0.005?50:0);
+        Bitmap b=Bitmap.createBitmap(width,Math.max(380,baseHeight),Bitmap.Config.ARGB_8888);
         Canvas canvas=new Canvas(b);canvas.drawColor(Color.WHITE);
 
         Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -2605,60 +3101,69 @@ public class MainActivity extends Activity {
         Paint fillP=new Paint(Paint.ANTI_ALIAS_FLAG);
 
         // Background Box
-        canvas.drawRoundRect(10,10,width-10,b.getHeight()-10,16,16,strokeP);
+        canvas.drawRoundRect(8,8,width-8,b.getHeight()-8,14,14,strokeP);
 
         // Header Background Ribbon
         fillP.setColor(Color.rgb(240,248,242));
-        canvas.drawRoundRect(14,14,width-14,90,12,12,fillP);
+        canvas.drawRoundRect(12,12,width-12,82,10,10,fillP);
 
         // Store Icon & Title
         try{
             Drawable d=getResources().getDrawable(com.saleh.enezi.R.drawable.ic_store);
-            int isz=56;
-            d.setBounds(margin+10,24,margin+10+isz,24+isz);
+            int isz=46;
+            d.setBounds(margin+8,18,margin+8+isz,18+isz);
             d.draw(canvas);
         }catch(Exception ignored){}
 
         p.setTypeface(Typeface.create("sans",Typeface.BOLD));
-        p.setTextSize(26);p.setColor(GREEN);p.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText("بقالة العزي",width-margin-14,52,p);
+        p.setTextSize(23);p.setColor(GREEN);p.setTextAlign(Paint.Align.RIGHT);
+        canvas.drawText("بقالة العزي",width-margin-10,44,p);
 
-        p.setTextSize(14);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
-        canvas.drawText("فاتورة مبيعات نقدية وآجلة  •  خدمة مميزة",width-margin-14,78,p);
+        p.setTextSize(12.5f);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
+        canvas.drawText("فاتورة #"+no+"  •  "+(date==null||date.isEmpty()?db.now():date),width-margin-10,68,p);
 
-        int y=120;
-        // Meta Info Card
-        fillP.setColor(Color.rgb(250,252,250));
-        canvas.drawRoundRect(margin,y,width-margin,y+60,10,10,fillP);
-        strokeP.setColor(Color.rgb(230,238,232));
-        canvas.drawRoundRect(margin,y,width-margin,y+60,10,10,strokeP);
-
-        p.setTextSize(14);p.setTypeface(Typeface.create("sans",Typeface.BOLD));p.setColor(GREEN);p.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText("فاتورة رقم: #"+no,width-margin-14,y+25,p);
-
-        p.setTextSize(13);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));p.setColor(TEXT);
-        canvas.drawText("التاريخ: "+(date==null||date.isEmpty()?db.now():date),margin+14,y+25,p);
-        p.setTextAlign(Paint.Align.RIGHT);
-
+        int y=106;
         String custName=customer==null||customer.trim().isEmpty()?"عميل نقدي":customer.trim();
-        p.setColor(DARK);p.setTextSize(13.5f);
-        canvas.drawText("العميل: "+custName,width-margin-14,y+48,p);
-        y+=75;
+        fillP.setColor(Color.rgb(250,252,250));
+        canvas.drawRoundRect(margin,y,width-margin,y+38,8,8,fillP);
+        strokeP.setColor(Color.rgb(230,238,232));
+        canvas.drawRoundRect(margin,y,width-margin,y+38,8,8,strokeP);
+
+        p.setTextSize(13);p.setTypeface(Typeface.create("sans",Typeface.BOLD));p.setColor(DARK);p.setTextAlign(Paint.Align.RIGHT);
+        canvas.drawText("العميل: "+custName,width-margin-12,y+24,p);
+        y+=48;
+
+        // Current Operation / Amount Card
+        double rem=total-paid;
+        boolean isCash=paid>=total && total>0;
+        int opBg=isCash?Color.rgb(240,250,242):(rem>0?Color.rgb(255,243,243):Color.rgb(240,248,255));
+        int opStroke=isCash?Color.rgb(190,235,205):(rem>0?Color.rgb(250,195,195):Color.rgb(195,225,250));
+        int opColor=isCash?GREEN:(rem>0?RED:BLUE);
+        fillP.setColor(opBg);
+        canvas.drawRoundRect(margin,y,width-margin,y+42,8,8,fillP);
+        strokeP.setColor(opStroke);
+        canvas.drawRoundRect(margin,y,width-margin,y+42,8,8,strokeP);
+
+        p.setColor(opColor);p.setTextSize(15);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+        p.setTextAlign(Paint.Align.CENTER);
+        String opText=isCash?"مسدد نقداً: "+fmt(total)+" يمني":(paid>0?"عليك: "+fmt(rem)+" يمني (مدفوع: "+fmt(paid)+")":"عليك: "+fmt(total)+" يمني");
+        canvas.drawText(opText,width/2,y+26,p);
+        y+=50;
 
         // Table Header
         fillP.setColor(GREEN);
-        canvas.drawRoundRect(margin,y,width-margin,y+32,6,6,fillP);
-        p.setColor(Color.WHITE);p.setTextSize(14);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+        canvas.drawRoundRect(margin,y,width-margin,y+28,5,5,fillP);
+        p.setColor(Color.WHITE);p.setTextSize(12.5f);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText("الصنف",width-margin-16,y+22,p);
+        canvas.drawText("الصنف (حق)",width-margin-12,y+19,p);
         p.setTextAlign(Paint.Align.CENTER);
-        canvas.drawText("الكمية",width-margin-260,y+22,p);
+        canvas.drawText("الكمية",width-margin-210,y+19,p);
         p.setTextAlign(Paint.Align.LEFT);
-        canvas.drawText("الإجمالي",margin+16,y+22,p);
-        y+=36;
+        canvas.drawText("الإجمالي",margin+12,y+19,p);
+        y+=32;
 
         // Table Rows
-        p.setTypeface(Typeface.create("sans",Typeface.NORMAL));p.setTextSize(13.5f);
+        p.setTypeface(Typeface.create("sans",Typeface.NORMAL));p.setTextSize(12);
         for(int i=0;i<lines.size();i++){
             Line l=lines.get(i);
             fillP.setColor(i%2==0?Color.rgb(252,254,252):Color.WHITE);
@@ -2668,54 +3173,50 @@ public class MainActivity extends Activity {
 
             p.setColor(TEXT);p.setTextAlign(Paint.Align.RIGHT);
             String iname=l.name==null?"":l.name.trim();
-            if(iname.length()>25)iname=iname.substring(0,25)+"…";
-            canvas.drawText(iname,width-margin-16,y+21,p);
+            if(iname.length()>22)iname=iname.substring(0,22)+"…";
+            canvas.drawText(iname,width-margin-12,y+18,p);
 
             p.setTextAlign(Paint.Align.CENTER);p.setColor(MUTED);
-            canvas.drawText("× "+fmt(l.qty),width-margin-260,y+21,p);
+            canvas.drawText("× "+fmt(l.qty),width-margin-210,y+18,p);
 
             p.setTextAlign(Paint.Align.LEFT);p.setColor(GREEN);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
-            canvas.drawText(fmt(l.total)+" ر.ي",margin+16,y+21,p);
+            canvas.drawText(fmt(l.total)+" ر.ي",margin+12,y+18,p);
             p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
             y+=lineH;
         }
 
-        y+=12;
-        // Total Card
+        y+=10;
+        // Total Bar
         fillP.setColor(Color.rgb(240,249,242));
-        canvas.drawRoundRect(margin,y,width-margin,y+46,10,10,fillP);
+        canvas.drawRoundRect(margin,y,width-margin,y+38,8,8,fillP);
         strokeP.setColor(Color.rgb(190,230,205));
-        canvas.drawRoundRect(margin,y,width-margin,y+46,10,10,strokeP);
+        canvas.drawRoundRect(margin,y,width-margin,y+38,8,8,strokeP);
 
-        p.setColor(GREEN);p.setTextSize(18);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+        p.setColor(GREEN);p.setTextSize(15);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText("إجمالي الفاتورة:",width-margin-16,y+30,p);
+        canvas.drawText("إجمالي الفاتورة:",width-margin-12,y+24,p);
         p.setTextAlign(Paint.Align.LEFT);
-        canvas.drawText(fmt(total)+" ريال",margin+16,y+30,p);
-        y+=52;
+        canvas.drawText(fmt(total)+" ريال",margin+12,y+24,p);
+        y+=44;
 
-        if(paid>0){
-            fillP.setColor(Color.rgb(245,248,252));
-            canvas.drawRoundRect(margin,y,width-margin,y+34,8,8,fillP);
-            p.setColor(BLUE);p.setTextSize(13.5f);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
-            p.setTextAlign(Paint.Align.RIGHT);
-            canvas.drawText("المدفوع: "+fmt(paid)+" ريال"+(total>paid?"   |   المتبقي: "+fmt(total-paid)+" ريال":"   (مسددة بالكامل)"),width-margin-14,y+22,p);
-            y+=40;
-        }
-
+        // Balance Card (الإجمالي - حساب العميل)
         if(customer!=null&&!customer.trim().isEmpty()&&Math.abs(balanceAfter)>=0.005){
             fillP.setColor(balanceAfter>0.005?Color.rgb(255,243,243):Color.rgb(240,248,255));
-            canvas.drawRoundRect(margin,y,width-margin,y+34,8,8,fillP);
+            strokeP.setColor(balanceAfter>0.005?Color.rgb(245,200,200):Color.rgb(200,225,250));
+            canvas.drawRoundRect(margin,y,width-margin,y+36,8,8,fillP);
+            canvas.drawRoundRect(margin,y,width-margin,y+36,8,8,strokeP);
+
             p.setColor(balanceColor(balanceAfter));p.setTextSize(13.5f);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
-            p.setTextAlign(Paint.Align.RIGHT);
-            canvas.drawText(balanceText(balanceAfter),width-margin-14,y+22,p);
-            y+=40;
+            p.setTextAlign(Paint.Align.CENTER);
+            String bText=balanceAfter>0?"الإجمالي - عليك "+fmt(balanceAfter)+" يمني":"الإجمالي - له "+fmt(Math.abs(balanceAfter))+" يمني";
+            canvas.drawText(bText,width/2,y+23,p);
+            y+=42;
         }
 
-        y+=10;
-        p.setTextAlign(Paint.Align.CENTER);p.setColor(MUTED);p.setTextSize(12);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
-        canvas.drawText("✨ شكراً لتعاملكم معنا ونسعد بخدمتكم دائماً ✨",width/2,y+14,p);
-        y+=26;
+        y+=8;
+        p.setTextAlign(Paint.Align.CENTER);p.setColor(MUTED);p.setTextSize(11);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
+        canvas.drawText("✨ شكراً لتعاملكم معنا • بقالة العزي ✨",width/2,y+12,p);
+        y+=22;
 
         return Bitmap.createBitmap(b,0,0,width,Math.min(y+10,b.getHeight()));
     }
@@ -2790,19 +3291,26 @@ public class MainActivity extends Activity {
         return FileProvider.getUriForFile(this,getPackageName()+".fileprovider",file);
     }
 
-    void shareReceiptImageAndText(String no,String customer,ArrayList<Line> lines,double total){
+    void shareReceiptImageAndText(String no,String customer,ArrayList<Line> lines,double total,double paid){
         try{
             long cid=customer==null||customer.trim().isEmpty()?-1:db.customerIdByName(customer.trim());
             double bal=cid>0?db.balance(cid):0;
-            String text=invoiceWhatsAppText(no,customer,lines,total,0,bal,db.now());
-            Bitmap b=invoiceReceiptBitmap(no,customer,lines,total,0,bal,db.now());
+            String text=invoiceWhatsAppText(no,customer,lines,total,paid,bal,db.now());
+            Bitmap b=invoiceReceiptBitmap(no,customer,lines,total,paid,bal,db.now());
             Uri uri=saveReceiptBitmap(b,no);
             String phone=db.phoneByName(customer);
             shareWhatsAppToCustomer(phone,text,uri);
         }catch(Exception e){
             long cid=customer==null||customer.trim().isEmpty()?-1:db.customerIdByName(customer.trim());
-            shareText(invoiceWhatsAppText(no,customer,lines,total,0,cid>0?db.balance(cid):0,db.now()));
+            shareText(invoiceWhatsAppText(no,customer,lines,total,paid,cid>0?db.balance(cid):0,db.now()));
         }
+    }
+
+    void shareReceiptImageAndText(String no,String customer,ArrayList<Line> lines,double total){
+        double paid=0;
+        long iid=db.invoiceIdByNo(no);
+        if(iid>0) paid=db.invoicePaid(iid);
+        shareReceiptImageAndText(no,customer,lines,total,paid);
     }
 
     String pendingPrintNo="",pendingPrintCustomer="";ArrayList<Line> pendingPrintLines;double pendingPrintTotal;
@@ -3628,14 +4136,14 @@ public class MainActivity extends Activity {
     void operationActions(long customerId,String customerName,long tid,String details,double amount,int type){
         String invNo=db.invoiceNoFromTransaction(details);ArrayList<String> choices=new ArrayList<>();
         if(!invNo.isEmpty())choices.add("🧾 تعديل الفاتورة");
-        choices.add("✏ تعديل العملية");choices.add("📤 مشاركة العملية واتساب");choices.add("🖼 مشاركة صورة");choices.add("🖨 طباعة الحالية");choices.add("🗑 حذف العملية");
+        choices.add("✏ تعديل العملية");choices.add("📤 مشاركة واتساب (صورة + نص)");choices.add("💬 إرسال رسالة SMS");choices.add("🖨 طباعة 58mm");choices.add("🗑 حذف العملية");
         String[] a=choices.toArray(new String[0]);
         new AlertDialog.Builder(this).setTitle("خيارات العملية").setItems(a,(d,w)->{
             int i=0;
             if(!invNo.isEmpty()&&w==i++){long iid=db.invoiceIdByNo(invNo);if(iid>0)invoice(true,iid);return;}
             if(w==i++){editTransaction(customerId,customerName,tid,amount,details,type);return;}
-            if(w==i++){shareOperation(customerName,details,amount,type,invNo);return;}
             if(w==i++){shareOperationImage(customerName,details,amount,type,invNo);return;}
+            if(w==i++){shareOperationSms(customerName,details,amount,type,invNo);return;}
             if(w==i++){printOperation(customerName,details,amount,type,invNo);return;}
             new AlertDialog.Builder(this).setTitle("حذف العملية؟").setPositiveButton("حذف",(x,y)->{db.deleteTransaction(tid);account(customerId,customerName);}).setNegativeButton("إلغاء",null).show();
         }).setNegativeButton("إغلاق",null).show();
@@ -3651,17 +4159,43 @@ public class MainActivity extends Activity {
 
     String compactOperationText(String customer,String details,double amount,int type,String invNo){
         StringBuilder t=new StringBuilder();
-        t.append(type==1?"🔴 *إشعار قيد سحب (عليه)*\n":"🟢 *إشعار قيد دفعة (له / سداد)*\n");
-        t.append("🛒 *بقالة العزي*\n");
-        t.append("━━━━━━━━━━━━━━━━━━\n");
-        t.append("👤 *العميل:* ").append(customer==null||customer.trim().isEmpty()?"نقدي":customer.trim()).append("\n");
-        if(invNo!=null&&!invNo.trim().isEmpty())t.append("🧾 *رقم الفاتورة:* #").append(invNo.trim()).append("\n");
-        if(details!=null&&!details.trim().isEmpty()&&!details.startsWith("فاتورة مبيعات رقم "))t.append("📝 *البيان:* ").append(details.trim()).append("\n");
-        t.append("💰 *المبلغ:* ").append(type==1?"عليه ":"له ").append(fmt(amount)).append(" ريال\n");
-        t.append("📊 *الرصيد الإجمالي الحالي:* ").append(balanceText(db.balanceByName(customer))).append("\n");
-        t.append("📅 *التاريخ:* ").append(db.now()).append("\n");
-        t.append("━━━━━━━━━━━━━━━━━━\n");
-        t.append("✨ *شكراً لتعاملكم معنا ونسعد بخدمتكم دائماً* ✨");
+        t.append("بقالة العزي :\n");
+        if(invNo!=null&&!invNo.trim().isEmpty()){
+            t.append("#").append(invNo.trim()).append("\n");
+        }
+        String cust=customer==null?"":customer.trim();
+        if(!cust.isEmpty()){
+            t.append(cust).append("\n");
+        }
+        if(type==1){
+            t.append("عليك ").append(fmt(amount)).append(" يمني\n");
+        }else{
+            t.append("له ").append(fmt(amount)).append(" يمني (دفعة سداد)\n");
+        }
+        String det=details==null?"":details.trim();
+        if(det.startsWith("فاتورة مبيعات رقم ")){
+            det=det.replace("فاتورة مبيعات رقم ","فاتورة #");
+        }
+        if(!det.isEmpty()){
+            if(det.startsWith("حق ")||det.startsWith("حق:")){
+                t.append(det);
+            }else{
+                t.append("حق ").append(det);
+            }
+        }else{
+            t.append("حق ").append(!cust.isEmpty()?cust:"عملية حسابية");
+        }
+        t.append("\n\n");
+        double bal=db.balanceByName(customer);
+        if(!cust.isEmpty()&&Math.abs(bal)>=0.005){
+            if(bal>0.005){
+                t.append("الإجمالي - عليك ").append(fmt(bal)).append(" يمني");
+            }else{
+                t.append("الإجمالي - له ").append(fmt(Math.abs(bal))).append(" يمني");
+            }
+        }else{
+            t.append("الإجمالي - خالص (0 يمني)");
+        }
         return t.toString();
     }
     void shareOperation(String customer,String details,double amount,int type,String invNo){
@@ -3678,9 +4212,9 @@ public class MainActivity extends Activity {
     }
 
     Bitmap operationBitmap(String customer,String details,double amount,int type,String invNo){
-        final int width=576;
-        final int margin=24;
-        Bitmap b=Bitmap.createBitmap(width,420,Bitmap.Config.ARGB_8888);
+        final int width=480;
+        final int margin=18;
+        Bitmap b=Bitmap.createBitmap(width,390,Bitmap.Config.ARGB_8888);
         Canvas c=new Canvas(b);c.drawColor(Color.WHITE);
 
         Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -3688,74 +4222,101 @@ public class MainActivity extends Activity {
         Paint fillP=new Paint(Paint.ANTI_ALIAS_FLAG);
 
         // Outer border
-        c.drawRoundRect(10,10,width-10,410,16,16,strokeP);
+        c.drawRoundRect(8,8,width-8,382,14,14,strokeP);
 
         // Header ribbon
         fillP.setColor(Color.rgb(240,248,242));
-        c.drawRoundRect(14,14,width-14,84,12,12,fillP);
+        c.drawRoundRect(12,12,width-12,82,10,10,fillP);
 
         try{
             Drawable d=getResources().getDrawable(com.saleh.enezi.R.drawable.ic_store);
-            int isz=50;
-            d.setBounds(margin+10,20,margin+10+isz,20+isz);
+            int isz=46;
+            d.setBounds(margin+8,18,margin+8+isz,18+isz);
             d.draw(c);
         }catch(Exception ignored){}
 
         p.setTypeface(Typeface.create("sans",Typeface.BOLD));
-        p.setTextSize(24);p.setColor(GREEN);p.setTextAlign(Paint.Align.RIGHT);
-        c.drawText("بقالة العزي",width-margin-14,48,p);
-        p.setTextSize(13);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
-        c.drawText("سند قيد مالي إلكتروني  •  إشعار حركة",width-margin-14,72,p);
+        p.setTextSize(23);p.setColor(GREEN);p.setTextAlign(Paint.Align.RIGHT);
+        c.drawText("بقالة العزي",width-margin-10,44,p);
+        p.setTextSize(12.5f);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
+        c.drawText("سند قيد مالي إلكتروني  •  إشعار حركة",width-margin-10,68,p);
 
-        int y=112;
+        int y=104;
+        String custName=customer==null||customer.trim().isEmpty()?"عميل نقدي":customer.trim();
+        fillP.setColor(Color.rgb(250,252,250));
+        c.drawRoundRect(margin,y,width-margin,y+36,8,8,fillP);
+        strokeP.setColor(Color.rgb(230,238,232));
+        c.drawRoundRect(margin,y,width-margin,y+36,8,8,strokeP);
+
+        p.setTextSize(13.5f);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+        p.setTextAlign(Paint.Align.RIGHT);
+        c.drawText("العميل: "+custName,width-margin-12,y+24,p);
+        y+=46;
+
         // Operation Type & Amount Card
         int badgeBgColor=type==1?Color.rgb(255,242,242):Color.rgb(240,249,242);
         int badgeBorderColor=type==1?Color.rgb(245,190,190):Color.rgb(190,230,205);
         int badgeTextColor=type==1?RED:GREEN;
         fillP.setColor(badgeBgColor);
-        c.drawRoundRect(margin,y,width-margin,y+76,12,12,fillP);
+        c.drawRoundRect(margin,y,width-margin,y+64,10,10,fillP);
         strokeP.setColor(badgeBorderColor);
-        c.drawRoundRect(margin,y,width-margin,y+76,12,12,strokeP);
+        c.drawRoundRect(margin,y,width-margin,y+64,10,10,strokeP);
 
-        p.setTextSize(14);p.setColor(badgeTextColor);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+        p.setTextSize(13);p.setColor(badgeTextColor);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextAlign(Paint.Align.RIGHT);
-        c.drawText(type==1?"🔴 حركة سحب (قيد عليه)":"🟢 دفعة سداد (قيد له)",width-margin-16,y+28,p);
+        c.drawText(type==1?"🔴 حركة سحب (قيد عليه)":"🟢 دفعة سداد (قيد له)",width-margin-14,y+24,p);
 
-        p.setTextSize(26);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+        p.setTextSize(22);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextAlign(Paint.Align.LEFT);
-        c.drawText(fmt(amount)+" ريال",margin+16,y+52,p);
-        y+=92;
+        String amtStr=(type==1?"عليك: ":"له: ")+fmt(amount)+" يمني";
+        c.drawText(amtStr,margin+14,y+46,p);
+        y+=74;
 
         // Details Card
         fillP.setColor(Color.rgb(252,254,252));
-        c.drawRoundRect(margin,y,width-margin,y+100,10,10,fillP);
-        strokeP.setColor(Color.rgb(230,238,232));
-        c.drawRoundRect(margin,y,width-margin,y+100,10,10,strokeP);
+        c.drawRoundRect(margin,y,width-margin,y+58,8,8,fillP);
+        strokeP.setColor(Color.rgb(235,240,236));
+        c.drawRoundRect(margin,y,width-margin,y+58,8,8,strokeP);
 
-        p.setTextSize(14);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+        String det=details==null?"":details.trim();
+        if(det.startsWith("فاتورة مبيعات رقم ")) det=det.replace("فاتورة مبيعات رقم ","فاتورة #");
+        String detLabel=det.isEmpty()?("حق "+custName):(det.startsWith("حق")?det:("حق "+det));
+
+        p.setTextSize(13);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextAlign(Paint.Align.RIGHT);
-        c.drawText("العميل: "+(customer==null||customer.trim().isEmpty()?"نقدي":customer.trim()),width-margin-14,y+26,p);
+        c.drawText(detLabel,width-margin-12,y+24,p);
 
-        p.setTextSize(12.5f);p.setColor(MUTED);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
-        if(invNo!=null&&!invNo.trim().isEmpty()){
-            c.drawText("المرجع: فاتورة #"+invNo.trim(),width-margin-14,y+48,p);
-        }else{
-            c.drawText("البيان: "+(details==null||details.trim().isEmpty()?"حركة قيد مباشر":details.trim()),width-margin-14,y+48,p);
-        }
-        c.drawText("التاريخ: "+db.now(),width-margin-14,y+72,p);
-        y+=112;
+        p.setTextSize(11.5f);p.setColor(MUTED);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
+        String subRef=(invNo!=null&&!invNo.trim().isEmpty()?"فاتورة #"+invNo.trim()+"  •  ":"")+db.now();
+        c.drawText(subRef,width-margin-12,y+44,p);
+        y+=68;
 
         // Balance Card
         double currentBal=db.balanceByName(customer);
-        fillP.setColor(currentBal>0.005?Color.rgb(255,245,245):Color.rgb(240,250,242));
-        c.drawRoundRect(margin,y,width-margin,y+40,8,8,fillP);
-        p.setColor(balanceColor(currentBal));p.setTextSize(14);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
-        p.setTextAlign(Paint.Align.CENTER);
-        c.drawText("الرصيد الإجمالي الحالي: "+balanceText(currentBal),width/2,y+26,p);
-        y+=52;
+        if(Math.abs(currentBal)>=0.005){
+            fillP.setColor(currentBal>0.005?Color.rgb(255,243,243):Color.rgb(240,248,255));
+            strokeP.setColor(currentBal>0.005?Color.rgb(245,200,200):Color.rgb(200,225,250));
+            c.drawRoundRect(margin,y,width-margin,y+36,8,8,fillP);
+            c.drawRoundRect(margin,y,width-margin,y+36,8,8,strokeP);
+            p.setColor(balanceColor(currentBal));p.setTextSize(13.5f);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+            p.setTextAlign(Paint.Align.CENTER);
+            String bText=currentBal>0?"الإجمالي - عليك "+fmt(currentBal)+" يمني":"الإجمالي - له "+fmt(Math.abs(currentBal))+" يمني";
+            c.drawText(bText,width/2,y+23,p);
+            y+=42;
+        }else{
+            fillP.setColor(Color.rgb(240,248,242));
+            strokeP.setColor(Color.rgb(200,235,210));
+            c.drawRoundRect(margin,y,width-margin,y+36,8,8,fillP);
+            c.drawRoundRect(margin,y,width-margin,y+36,8,8,strokeP);
+            p.setColor(GREEN);p.setTextSize(13.5f);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+            p.setTextAlign(Paint.Align.CENTER);
+            c.drawText("الإجمالي - خالص (0 يمني)",width/2,y+23,p);
+            y+=42;
+        }
 
-        p.setColor(MUTED);p.setTextSize(12);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
-        c.drawText("✨ شكراً لتعاملكم معنا • بقالة العزي ✨",width/2,y+18,p);
+        y+=6;
+        p.setColor(MUTED);p.setTextSize(11);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
+        c.drawText("✨ شكراً لتعاملكم معنا • بقالة العزي ✨",width/2,y+12,p);
 
         return b;
     }
@@ -4603,8 +5164,8 @@ public class MainActivity extends Activity {
                 if(pid<=0)throw new Exception("تعذر حفظ الفاتورة");
                 db.replacePurchaseLines(pid,lines);
                 db.updateStockFromPurchase(lines);
-                Toast.makeText(this,"تم حفظ فاتورة الشراء وتحديث المخزون",Toast.LENGTH_LONG).show();
-                purchaseInvoices();
+                Toast.makeText(this,"تم حفظ فاتورة الشراء وتحديث المخزون",Toast.LENGTH_SHORT).show();
+                showPostSavePurchaseActions(pid,no,sn,lines,sum,db.now());
             }catch(Exception e){
                 Toast.makeText(this,"تحقق من اسم المورد ورقم الفاتورة والأصناف",Toast.LENGTH_SHORT).show();
             }
