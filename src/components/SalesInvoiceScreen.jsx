@@ -197,9 +197,25 @@ export default function SalesInvoiceScreen({ data, onSaveInvoice, onOpenReceipt,
     };
   };
 
+  const hasInsufficientStock = () => {
+    const required = {};
+    items.forEach((item) => {
+      const key = item.name.trim().toLowerCase();
+      required[key] = (required[key] || 0) + (Number(item.qty) || 0);
+    });
+    return Object.entries(required).some(([key, qty]) => {
+      const product = inventory.find((p) => p.name.trim().toLowerCase() === key);
+      return product && Number(product.stock || 0) < qty;
+    });
+  };
+
   const handleSave = () => {
     if (items.length === 0) {
       if (showToast) showToast('يرجى إضافة صنف واحد على الأقل للفاتورة', 'danger');
+      return;
+    }
+    if (hasInsufficientStock()) {
+      if (showToast) showToast('لا يمكن حفظ الفاتورة: الكمية المطلوبة أكبر من المخزون المتوفر.', 'danger');
       return;
     }
 
@@ -213,6 +229,10 @@ export default function SalesInvoiceScreen({ data, onSaveInvoice, onOpenReceipt,
   const handleSaveAndShareWhatsApp = () => {
     if (items.length === 0) {
       if (showToast) showToast('يرجى إضافة صنف واحد على الأقل للفاتورة', 'danger');
+      return;
+    }
+    if (hasInsufficientStock()) {
+      if (showToast) showToast('لا يمكن حفظ الفاتورة: الكمية المطلوبة أكبر من المخزون المتوفر.', 'danger');
       return;
     }
 
