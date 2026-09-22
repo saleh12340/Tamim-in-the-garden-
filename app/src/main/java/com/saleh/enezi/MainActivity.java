@@ -147,7 +147,7 @@ public class MainActivity extends Activity {
         back.setTextColor(Color.WHITE); back.setTextSize(28); back.setBackgroundColor(Color.TRANSPARENT);
         back.setContentDescription("رجوع للشاشة السابقة"); back.setOnClickListener(v->goBack());
         bar.addView(back,new LinearLayout.LayoutParams(dp(44),dp(40)));
-        TextView logo=tv("بقالة العزي",18); logo.setTextColor(Color.WHITE); logo.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+        TextView logo=tv("بقالة العزي للمواد الغذائية",18); logo.setTextColor(Color.WHITE); logo.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         bar.addView(logo,new LinearLayout.LayoutParams(0,dp(40),1));
         TextView pt=tv(title,13.5f); pt.setTextColor(Color.WHITE); pt.setGravity(Gravity.CENTER); pt.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         bar.addView(pt,new LinearLayout.LayoutParams(dp(110),dp(38))); root.addView(bar,new LinearLayout.LayoutParams(-1,dp(48)));
@@ -407,7 +407,7 @@ public class MainActivity extends Activity {
         titleBox.setOrientation(LinearLayout.VERTICAL);
         titleBox.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
         
-        TextView title=tv("بقالة العزي للمواد الغذائية",19);
+        TextView title=tv("بقالة العزي للمواد الغذائية للمواد الغذائية",19);
         title.setTextColor(Color.WHITE); title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         title.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
         
@@ -1215,7 +1215,7 @@ public class MainActivity extends Activity {
             String s=statement(id,name);Bitmap b=receiptBitmap(s);
             String fn="كشف_"+name.replaceAll("[\\/:*?\"<>|]","_")+"_"+new SimpleDateFormat("yyyyMMdd_HHmmss",Locale.US).format(new Date())+".png";
             AppStorage.saveAppImage(this, b, fn);
-            Toast.makeText(this,"تم حفظ صورة كشف الحساب في:\nDownload/بقالة العزي خاص/الصور التي ينتجها التطبيق",Toast.LENGTH_LONG).show();
+            Toast.makeText(this,"تم حفظ صورة كشف الحساب في:\nDownload/بقالة العزي للمواد الغذائية خاص/الصور التي ينتجها التطبيق",Toast.LENGTH_LONG).show();
         }catch(Exception e){Toast.makeText(this,"تعذر حفظ صورة كشف الحساب",Toast.LENGTH_SHORT).show();}
     }
     static void restoreDatabaseFromUri(Context c,Uri uri){
@@ -1232,8 +1232,8 @@ public class MainActivity extends Activity {
     }
     void showBackupRestore(){
         new AlertDialog.Builder(this).setTitle("النسخ الاحتياطي والاسترجاع")
-            .setMessage("النسخة التلقائية: كل يوم الساعة 11:59 مساءً.\n\nالمسار: Download/بقالة العزي خاص/النسخ الاحتياطية\n\nيمكنك إنشاء نسخة احتياطية يدوياً الآن في أي وقت.")
-            .setPositiveButton("💾 إنشاء نسخة الآن",(d,w)->{ BackupReceiver.backup(this); Toast.makeText(this,"تم حفظ النسخة في:\nDownload/بقالة العزي خاص/النسخ الاحتياطية",Toast.LENGTH_LONG).show(); })
+            .setMessage("النسخة التلقائية: كل يوم الساعة 11:59 مساءً.\n\nالمسار: Download/بقالة العزي للمواد الغذائية خاص/النسخ الاحتياطية\n\nيمكنك إنشاء نسخة احتياطية يدوياً الآن في أي وقت.")
+            .setPositiveButton("💾 إنشاء نسخة الآن",(d,w)->{ BackupReceiver.backup(this); Toast.makeText(this,"تم حفظ النسخة في:\nDownload/بقالة العزي للمواد الغذائية خاص/النسخ الاحتياطية",Toast.LENGTH_LONG).show(); })
             .setNeutralButton("استرجاع نسخة",(d,w)->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("*/*");i.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,8801);})
             .setNegativeButton("إغلاق",null).show();
     }
@@ -1250,7 +1250,7 @@ public class MainActivity extends Activity {
                 ch.setDescription("إشعار عند إضافة فاتورة أو عملية جديدة");nm.createNotificationChannel(ch);
             }
             android.app.Notification.Builder b=android.os.Build.VERSION.SDK_INT>=26?new android.app.Notification.Builder(this,channelId):new android.app.Notification.Builder(this);
-            b.setSmallIcon(android.R.drawable.ic_menu_info_details).setContentTitle(title).setContentText(text).setAutoCancel(true);
+            b.setSmallIcon(com.saleh.enezi.R.drawable.ic_store).setContentTitle("بقالة العزي للمواد الغذائية").setContentText(title+" — "+text).setStyle(new android.app.Notification.BigTextStyle().bigText("بقالة العزي للمواد الغذائية — مستقبل تجارتك يبدأ من هنا\n"+title+" — "+text)).setAutoCancel(true);
             nm.notify((int)(System.currentTimeMillis()%100000),b.build());
         }catch(Exception ignored){}
     }
@@ -1333,7 +1333,7 @@ public class MainActivity extends Activity {
     }
     String receiptTextFromLines(String no,String customer,ArrayList<Line> lines,double total,long cid,double balanceAfter){
         StringBuilder s=new StringBuilder();
-        s.append("بقالة العزي\nفاتورة ").append(no).append("\n");
+        s.append("بقالة العزي للمواد الغذائية\nفاتورة ").append(no).append("\n");
         if(customer!=null&&!customer.trim().isEmpty())s.append("العميل: ").append(customer.trim()).append("\n");
         s.append("التاريخ: ").append(db.now()).append("\n\n");
         for(Line l:lines){
@@ -2450,7 +2450,7 @@ public class MainActivity extends Activity {
     }
     String purchaseReceiptText(String no,String supplier,ArrayList<PurchaseLine> lines,double total,String date){
         StringBuilder s=new StringBuilder();
-        s.append("🛒 *بقالة العزي*\n");
+        s.append("🛒 *بقالة العزي للمواد الغذائية*\n");
         s.append("━━━━━━━━━━━━━━━━━━\n");
         s.append("📦 *فاتورة شراء رقم:* #").append(no).append("\n");
         s.append("👤 *المورد:* ").append(supplier==null||supplier.trim().isEmpty()?"بدون مورد":supplier.trim()).append("\n");
@@ -2466,7 +2466,7 @@ public class MainActivity extends Activity {
         s.append("━━━━━━━━━━━━━━━━━━\n");
         s.append("💰 *إجمالي فاتورة الشراء:* ").append(fmt(total)).append(" ريال\n");
         s.append("━━━━━━━━━━━━━━━━━━\n");
-        s.append("✨ *بقالة العزي - إدارة المشتريات والمخزون* ✨");
+        s.append("✨ *بقالة العزي للمواد الغذائية - إدارة المشتريات والمخزون* ✨");
         return s.toString();
     }
     Bitmap purchaseReceiptBitmap(String no,String supplier,ArrayList<PurchaseLine> lines,double total,String date){
@@ -2496,7 +2496,7 @@ public class MainActivity extends Activity {
 
         p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextSize(22);p.setColor(GOLD);p.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText("بقالة العزي",width-margin-10,44,p);
+        canvas.drawText("بقالة العزي للمواد الغذائية",width-margin-10,44,p);
 
         p.setTextSize(12f);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
         canvas.drawText("فاتورة شراء #"+no+"  •  "+(date==null||date.isEmpty()?db.now():date),width-margin-10,68,p);
@@ -2561,7 +2561,7 @@ public class MainActivity extends Activity {
         y+=48;
 
         p.setTextAlign(Paint.Align.CENTER);p.setColor(MUTED);p.setTextSize(11);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
-        canvas.drawText("✨ بقالة العزي • سجل المشتريات والمخزون ✨",width/2,y+12,p);
+        canvas.drawText("✨ بقالة العزي للمواد الغذائية • سجل المشتريات والمخزون ✨",width/2,y+12,p);
         y+=22;
 
         return Bitmap.createBitmap(b,0,0,width,Math.min(y+16,b.getHeight()));
@@ -2593,7 +2593,7 @@ public class MainActivity extends Activity {
         canvas.drawRoundRect(margin,y,pageW-margin,y+52,8,8,strokePaint);
 
         titleP.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText("بقالة العزي",pageW-margin-12,y+24,titleP);
+        canvas.drawText("بقالة العزي للمواد الغذائية",pageW-margin-12,y+24,titleP);
         subP.setTextAlign(Paint.Align.RIGHT);
         canvas.drawText("فاتورة شراء #"+no+"  •  "+(date==null||date.isEmpty()?db.now():date),pageW-margin-12,y+42,subP);
         y+=60;
@@ -2661,7 +2661,7 @@ public class MainActivity extends Activity {
 
         subP.setTextAlign(Paint.Align.CENTER);
         subP.setColor(MUTED);
-        canvas.drawText("✨ بقالة العزي • إدارة المشتريات والمخزون ✨",pageW/2,y+16,subP);
+        canvas.drawText("✨ بقالة العزي للمواد الغذائية • إدارة المشتريات والمخزون ✨",pageW/2,y+16,subP);
 
         pdf.finishPage(page);
         try(FileOutputStream out=new FileOutputStream(file)){pdf.writeTo(out);}
@@ -2714,7 +2714,7 @@ public class MainActivity extends Activity {
         try{
             ArrayList<PurchaseLine> lines=loadPurchaseLines(id);
             StringBuilder s=new StringBuilder();
-            s.append("بقالة العزي\nفاتورة شراء: ").append(no).append("\nالمورد: ").append(supplier==null||supplier.isEmpty()?"بدون مورد":supplier).append("\nالتاريخ: ").append(date).append("\n");
+            s.append("بقالة العزي للمواد الغذائية\nفاتورة شراء: ").append(no).append("\nالمورد: ").append(supplier==null||supplier.isEmpty()?"بدون مورد":supplier).append("\nالتاريخ: ").append(date).append("\n");
             s.append("------------------------------\nالصنف | الكمية | الإجمالي\n");
             for(PurchaseLine l:lines){
                 s.append(l.name==null?"":l.name.trim()).append(" | ").append(fmt(l.qty)).append(" | ").append(fmt(l.total)).append("\n");
@@ -2726,7 +2726,7 @@ public class MainActivity extends Activity {
     }
 
     String receiptText(String no,String customer,LinearLayout rows,double total,long cid){
-        StringBuilder s=new StringBuilder("بقالة العزي\nفاتورة رقم: ").append(no).append("\nالتاريخ: ").append(db.now()).append("\n");
+        StringBuilder s=new StringBuilder("بقالة العزي للمواد الغذائية\nفاتورة رقم: ").append(no).append("\nالتاريخ: ").append(db.now()).append("\n");
         if(customer!=null&&!customer.trim().isEmpty())s.append("العميل: ").append(customer.trim()).append("\n");
         s.append("------------------------------\n");
         for(int i=0;i<rows.getChildCount();i++){
@@ -2802,7 +2802,7 @@ public class MainActivity extends Activity {
         canvas.drawRoundRect(margin,y,pageW-margin,y+50,8,8,strokePaint);
 
         titlePaint.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText("بقالة العزي  •  كشف حساب تفصيلي",pageW-margin-14,y+24,titlePaint);
+        canvas.drawText("بقالة العزي للمواد الغذائية  •  كشف حساب تفصيلي",pageW-margin-14,y+24,titlePaint);
         subPaint.setTextAlign(Paint.Align.RIGHT);
         canvas.drawText("تاريخ الاستخراج: "+nowDate+"  |  العميل: "+name+(phone.isEmpty()?"":"  |  الهاتف: "+phone),pageW-margin-14,y+42,subPaint);
         y+=60;
@@ -2858,7 +2858,7 @@ public class MainActivity extends Activity {
             if(y+rowH>pageH-margin-30){
                 // Footer of page
                 cellPaint.setColor(MUTED);cellPaint.setTextAlign(Paint.Align.CENTER);
-                canvas.drawText("صفحة "+pageNo+"  •  بقالة العزي",pageW/2,pageH-margin+10,cellPaint);
+                canvas.drawText("صفحة "+pageNo+"  •  بقالة العزي للمواد الغذائية",pageW/2,pageH-margin+10,cellPaint);
                 pdf.finishPage(page);
                 pageNo++;
                 page=pdf.startPage(new android.graphics.pdf.PdfDocument.PageInfo.Builder(pageW,pageH,pageNo).create());
@@ -2912,11 +2912,11 @@ public class MainActivity extends Activity {
             fillPaint.setColor(Color.rgb(243,248,244));
             canvas.drawRoundRect(margin,y,pageW-margin,y+32,6,6,fillPaint);
             boldCellPaint.setColor(GREEN);boldCellPaint.setTextSize(11);boldCellPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("شكراً لتعاملكم مع بقالة العزي  •  الرصيد النهائي: "+balanceText(currentBalance),pageW/2,y+20,boldCellPaint);
+            canvas.drawText("شكراً لتعاملكم مع بقالة العزي للمواد الغذائية  •  الرصيد النهائي: "+balanceText(currentBalance),pageW/2,y+20,boldCellPaint);
         }
 
         cellPaint.setColor(MUTED);cellPaint.setTextAlign(Paint.Align.CENTER);
-        canvas.drawText("صفحة "+pageNo+"  •  تم استخراج هذا الكشف آلياً من تطبيق بقالة العزي",pageW/2,pageH-margin+10,cellPaint);
+        canvas.drawText("صفحة "+pageNo+"  •  تم استخراج هذا الكشف آلياً من تطبيق بقالة العزي للمواد الغذائية",pageW/2,pageH-margin+10,cellPaint);
         pdf.finishPage(page);
 
         try(FileOutputStream out=new FileOutputStream(file)){pdf.writeTo(out);}catch(Exception e){throw new RuntimeException(e);}
@@ -2951,7 +2951,7 @@ public class MainActivity extends Activity {
             Intent i=new Intent(Intent.ACTION_SEND);
             i.setType("application/pdf");
             i.putExtra(Intent.EXTRA_STREAM,uri);
-            String caption="كشف حساب تفصيلي - "+name+"\nبقالة العزي\nرصيدكم الحالي: "+balanceText(db.balance(id));
+            String caption="كشف حساب تفصيلي - "+name+"\nبقالة العزي للمواد الغذائية\nرصيدكم الحالي: "+balanceText(db.balance(id));
             i.putExtra(Intent.EXTRA_TEXT,caption);
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             String p=normalizeWhatsAppPhone(db.phoneByName(name));
@@ -2987,7 +2987,7 @@ public class MainActivity extends Activity {
         canvas.drawRoundRect(margin,y,pageW-margin,y+52,8,8,strokePaint);
 
         titleP.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText("بقالة العزي",pageW-margin-12,y+24,titleP);
+        canvas.drawText("بقالة العزي للمواد الغذائية",pageW-margin-12,y+24,titleP);
         subP.setTextAlign(Paint.Align.RIGHT);
         canvas.drawText("فاتورة مبيعات #"+no+"  •  "+(date==null||date.isEmpty()?db.now():date),pageW-margin-12,y+42,subP);
         y+=60;
@@ -3087,7 +3087,7 @@ public class MainActivity extends Activity {
 
         subP.setTextAlign(Paint.Align.CENTER);
         subP.setColor(MUTED);
-        canvas.drawText("✨ شكراً لتعاملكم معنا ونسعد بخدمتكم دائماً • بقالة العزي ✨",pageW/2,y+16,subP);
+        canvas.drawText("✨ شكراً لتعاملكم معنا ونسعد بخدمتكم دائماً • بقالة العزي للمواد الغذائية ✨",pageW/2,y+16,subP);
 
         pdf.finishPage(page);
         try(FileOutputStream out=new FileOutputStream(file)){pdf.writeTo(out);}
@@ -3188,7 +3188,7 @@ public class MainActivity extends Activity {
         double bal=db.balanceByName(customer);
         String phone=db.phoneByName(customer);
         StringBuilder s=new StringBuilder();
-        s.append("بقالة العزي :\n");
+        s.append("بقالة العزي للمواد الغذائية :\n");
         if(customer!=null&&!customer.trim().isEmpty()) s.append(customer.trim()).append("\n");
         if(Math.abs(bal)<0.005){
             s.append("الإجمالي - خالص (0 يمني)");
@@ -3444,7 +3444,7 @@ public class MainActivity extends Activity {
 
         Cursor c=db.lowStockItems();
         final StringBuilder shareSb=new StringBuilder();
-        shareSb.append("📋 *طلبية نواقص مواد غذائية - بقالة العزي*\n");
+        shareSb.append("📋 *طلبية نواقص مواد غذائية - بقالة العزي للمواد الغذائية*\n");
         shareSb.append("📅 التاريخ: ").append(new SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date())).append("\n\n");
         int count=0;
         while(c.moveToNext()){
@@ -3502,7 +3502,7 @@ public class MainActivity extends Activity {
             shareBtn.setTextColor(Color.WHITE);
             shareBtn.setTextSize(12);
             shareBtn.setOnClickListener(v->{
-                shareSb.append("\n_تم الإرسال عبر نظام بقالة العزي_");
+                shareSb.append("\n_تم الإرسال عبر نظام بقالة العزي للمواد الغذائية_");
                 shareText(shareSb.toString());
             });
             actions.addView(shareBtn,new LinearLayout.LayoutParams(0,dp(42),1));
@@ -3529,7 +3529,7 @@ public class MainActivity extends Activity {
 
     String invoiceWhatsAppText(String no,String customer,ArrayList<Line> lines,double total,double paid,double balanceAfter,String date){
         StringBuilder s=new StringBuilder();
-        s.append("بقالة العزي :\n");
+        s.append("بقالة العزي للمواد الغذائية :\n");
         if(no!=null&&!no.trim().isEmpty()){
             s.append("#").append(no.trim()).append("\n");
         }
@@ -3604,7 +3604,7 @@ public class MainActivity extends Activity {
 
         p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextSize(23);p.setColor(GREEN);p.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText("بقالة العزي",width-margin-10,44,p);
+        canvas.drawText("بقالة العزي للمواد الغذائية",width-margin-10,44,p);
 
         p.setTextSize(12.5f);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
         canvas.drawText("فاتورة #"+no+"  •  "+(date==null||date.isEmpty()?db.now():date),width-margin-10,68,p);
@@ -3702,7 +3702,7 @@ public class MainActivity extends Activity {
 
         y+=8;
         p.setTextAlign(Paint.Align.CENTER);p.setColor(MUTED);p.setTextSize(11);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
-        canvas.drawText("✨ شكراً لتعاملكم معنا • بقالة العزي ✨",width/2,y+12,p);
+        canvas.drawText("✨ شكراً لتعاملكم معنا • بقالة العزي للمواد الغذائية ✨",width/2,y+12,p);
         y+=22;
 
         return Bitmap.createBitmap(b,0,0,width,Math.min(y+10,b.getHeight()));
@@ -3735,13 +3735,13 @@ public class MainActivity extends Activity {
         }catch(Exception ignored){}
 
         p.setTypeface(Typeface.create("sans",Typeface.BOLD));
-        p.setTextSize(19);p.setColor(green);canvas.drawText("بقالة العزي",width/2,80,p);
+        p.setTextSize(19);p.setColor(green);canvas.drawText("بقالة العزي للمواد الغذائية",width/2,80,p);
 
         int y=108;
         for(String line:ls){
             if(line==null||line.trim().isEmpty()){y+=8;continue;}
             String l=line.trim();
-            if(l.equals("بقالة العزي")||l.equals("🛒 *بقالة العزي*")||l.equals("🧾 *بقالة العزي*")) continue;
+            if(l.equals("بقالة العزي للمواد الغذائية")||l.equals("🛒 *بقالة العزي للمواد الغذائية*")||l.equals("🧾 *بقالة العزي للمواد الغذائية*")) continue;
             if(l.startsWith("━━")||l.startsWith("──")||l.equals("------------------------------")){
                 p.setColor(Color.LTGRAY);canvas.drawLine(margin,y,width-margin,y,p);y+=12;continue;
             }
@@ -4164,7 +4164,7 @@ public class MainActivity extends Activity {
                     waBtn.setTextSize(12);
                     waBtn.setBackgroundColor(Color.TRANSPARENT);
                     waBtn.setOnClickListener(v->{
-                        shareWhatsAppToCustomer(phoneStr,"السلام عليكم أخي "+n+"\nتحية طيبة من بقالة العزي\nرصيد حسابكم الحالي: "+balanceText(bal),null);
+                        shareWhatsAppToCustomer(phoneStr,"السلام عليكم أخي "+n+"\nتحية طيبة من بقالة العزي للمواد الغذائية\nرصيد حسابكم الحالي: "+balanceText(bal),null);
                     });
                     qActions.addView(waBtn,new LinearLayout.LayoutParams(dp(32),dp(36)));
                 }
@@ -4281,7 +4281,7 @@ public class MainActivity extends Activity {
             Button waBtn=button("💬");
             waBtn.setTextSize(13); waBtn.setBackgroundColor(Color.TRANSPARENT);
             waBtn.setOnClickListener(v->{
-                shareWhatsAppToCustomer(customerPhone,"السلام عليكم أخي "+name+"\nتحية طيبة من بقالة العزي\nرصيد حسابكم الحالي: "+balanceText(currentBal),null);
+                shareWhatsAppToCustomer(customerPhone,"السلام عليكم أخي "+name+"\nتحية طيبة من بقالة العزي للمواد الغذائية\nرصيد حسابكم الحالي: "+balanceText(currentBal),null);
             });
             pTop.addView(waBtn,new LinearLayout.LayoutParams(dp(36),dp(38)));
         }
@@ -4649,7 +4649,7 @@ public class MainActivity extends Activity {
 
     String compactOperationText(String customer,String details,double amount,int type,String invNo){
         StringBuilder t=new StringBuilder();
-        t.append("بقالة العزي :\n");
+        t.append("بقالة العزي للمواد الغذائية :\n");
         if(invNo!=null&&!invNo.trim().isEmpty()){
             t.append("#").append(invNo.trim()).append("\n");
         }
@@ -4727,7 +4727,7 @@ public class MainActivity extends Activity {
 
         p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextSize(23);p.setColor(GREEN);p.setTextAlign(Paint.Align.RIGHT);
-        c.drawText("بقالة العزي",width-margin-10,44,p);
+        c.drawText("بقالة العزي للمواد الغذائية",width-margin-10,44,p);
         p.setTextSize(12.5f);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
         c.drawText("سند قيد مالي إلكتروني  •  إشعار حركة",width-margin-10,68,p);
 
@@ -4806,7 +4806,7 @@ public class MainActivity extends Activity {
 
         y+=6;
         p.setColor(MUTED);p.setTextSize(11);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
-        c.drawText("✨ شكراً لتعاملكم معنا • بقالة العزي ✨",width/2,y+12,p);
+        c.drawText("✨ شكراً لتعاملكم معنا • بقالة العزي للمواد الغذائية ✨",width/2,y+12,p);
 
         return b;
     }
@@ -4816,7 +4816,7 @@ public class MainActivity extends Activity {
     }
 
     void shareSelectedTransactions(long customerId,String name,ArrayList<Long> ids){
-        StringBuilder text=new StringBuilder("📋 *بقالة العزي - كشف عمليات محددة*\n");
+        StringBuilder text=new StringBuilder("📋 *بقالة العزي للمواد الغذائية - كشف عمليات محددة*\n");
         text.append("━━━━━━━━━━━━━━━━━━\n");
         text.append("👤 *العميل:* ").append(name).append("\n");
         text.append("📅 *التاريخ:* ").append(db.now()).append("\n");
@@ -4838,12 +4838,12 @@ public class MainActivity extends Activity {
         text.append("🔺 *إجمالي المحدد له:* ").append(fmt(credit)).append(" ريال\n");
         text.append("📊 *الرصيد الإجمالي الحالي:* ").append(balanceText(db.balance(customerId))).append("\n");
         text.append("━━━━━━━━━━━━━━━━━━\n");
-        text.append("✨ *بقالة العزي - خدمة متميزة* ✨");
+        text.append("✨ *بقالة العزي للمواد الغذائية - خدمة متميزة* ✨");
         shareWhatsAppToCustomer(db.phoneByName(name),text.toString(),null);
     }
 
     void printSelectedTransactions(long customerId,String name,ArrayList<Long> ids){
-        StringBuilder text=new StringBuilder("بقالة العزي\nكشف عمليات: ").append(name).append("\nالتاريخ: ").append(db.now()).append("\n");
+        StringBuilder text=new StringBuilder("بقالة العزي للمواد الغذائية\nكشف عمليات: ").append(name).append("\nالتاريخ: ").append(db.now()).append("\n");
         text.append("------------------------------\n");
         double debit=0,credit=0;
         for(Long tid:ids){
@@ -4871,7 +4871,7 @@ public class MainActivity extends Activity {
                 if(iid>0){Cursor c=db.invoiceLines(iid);while(c.moveToNext())ls.add(new Line(c.getString(1),c.getDouble(2),c.getDouble(3)));c.close();}
             }
             String text=!ls.isEmpty()?receiptTextFromLines(invNo,customer,ls,totalOf(ls),db.customer(customer)):
-                "بقالة العزي\nعملية مالية\nالعميل: "+customer+"\n"+(details==null||details.isEmpty()?"":details+"\n")+(type==1?"عليه: ":"له: ")+fmt(amount)+" ريال\n"+balanceText(db.balanceByName(customer))+"\nالتاريخ: "+db.now();
+                "بقالة العزي للمواد الغذائية\nعملية مالية\nالعميل: "+customer+"\n"+(details==null||details.isEmpty()?"":details+"\n")+(type==1?"عليه: ":"له: ")+fmt(amount)+" ريال\n"+balanceText(db.balanceByName(customer))+"\nالتاريخ: "+db.now();
             previewTextForPrint(text,customer);
         }catch(Exception e){Toast.makeText(this,"تعذر تجهيز العملية للطباعة",Toast.LENGTH_LONG).show();}
     }
@@ -4882,7 +4882,7 @@ public class MainActivity extends Activity {
     }
     String statement(long id,String name){
         StringBuilder s=new StringBuilder();
-        s.append("بقالة العزي\nكشف حساب\n");
+        s.append("بقالة العزي للمواد الغذائية\nكشف حساب\n");
         s.append("العميل: ").append(name).append("\n");
         s.append("التاريخ: ").append(db.now()).append("\n\n");
         double running=db.balance(id),debit=0,credit=0;Cursor c=db.transactions(id);
@@ -5161,7 +5161,7 @@ public class MainActivity extends Activity {
     void newNotesPage(){if(currentNotePageId>0)db.touchNotePage(currentNotePageId);currentNotePageId=db.createNotePage("ملاحظة جديدة",db.now());notes();}
     void showNotesHistory(){base("سجل الصفحات");section("الصفحات المحفوظة");Cursor c=db.notePages();while(c.moveToNext()){long id=c.getLong(0);String title=c.getString(1),date=c.getString(2);int n=c.getInt(3);LinearLayout row=card();TextView t=tv("📝 "+title+"\n"+date+" • "+n+" عنصر",12);t.setMaxLines(2);row.addView(t,new LinearLayout.LayoutParams(-1,dp(52)));row.setOnClickListener(v->{currentNotePageId=id;notes();});content.addView(row,new LinearLayout.LayoutParams(-1,dp(62)));addSpace(3);}c.close();}
     String notesWhatsAppText(){
-        StringBuilder s=new StringBuilder("📝 *بقالة العزي - الملاحظات الذكية*\n");
+        StringBuilder s=new StringBuilder("📝 *بقالة العزي للمواد الغذائية - الملاحظات الذكية*\n");
         s.append("━━━━━━━━━━━━━━━━━━\n");
         s.append("📅 *التاريخ:* ").append(db.now()).append("\n");
         s.append("━━━━━━━━━━━━━━━━━━\n");
@@ -5177,11 +5177,11 @@ public class MainActivity extends Activity {
             for(NoteItem x:r)s.append("▪️ ").append(x.name).append(" × ").append(fmt(x.qty)).append("\n");
             s.append("──────────────────\n");
         }
-        s.append("✨ *بقالة العزي* ✨");
+        s.append("✨ *بقالة العزي للمواد الغذائية* ✨");
         return s.toString();
     }
     String notesReceiptText(){
-        StringBuilder s=new StringBuilder("بقالة العزي\nالملاحظات الذكية\nالتاريخ: ").append(db.now()).append("\n");
+        StringBuilder s=new StringBuilder("بقالة العزي للمواد الغذائية\nالملاحظات الذكية\nالتاريخ: ").append(db.now()).append("\n");
         ArrayList<NoteItem> l=new ArrayList<>(),r=new ArrayList<>();
         db.loadNoteItems(currentNotePageId,l,r);
         if(!l.isEmpty()){
@@ -6667,7 +6667,7 @@ public class MainActivity extends Activity {
             if(savedPath!=null){
                 String fileName=new File(savedPath).getName();
                 db.addScannedInvoice(name,fileName,cat,notes,date,savedPath);
-                Toast.makeText(this,"تم الحفظ في:\nDownload/بقالة العزي خاص/صور الفواتير",Toast.LENGTH_LONG).show();
+                Toast.makeText(this,"تم الحفظ في:\nDownload/بقالة العزي للمواد الغذائية خاص/صور الفواتير",Toast.LENGTH_LONG).show();
                 dlg.dismiss();
                 scanner();
             }else{
@@ -6685,7 +6685,7 @@ public class MainActivity extends Activity {
             if(savedPath!=null){
                 String fileName=new File(savedPath).getName();
                 db.addScannedInvoice(name,fileName,cat,notes,date,savedPath);
-                Toast.makeText(this,"تم الحفظ في:\nDownload/بقالة العزي خاص/صور الفواتير",Toast.LENGTH_SHORT).show();
+                Toast.makeText(this,"تم الحفظ في:\nDownload/بقالة العزي للمواد الغذائية خاص/صور الفواتير",Toast.LENGTH_SHORT).show();
                 dlg.dismiss();
                 scanner();
                 shareScannedInvoice(savedPath,name);
@@ -6726,7 +6726,7 @@ public class MainActivity extends Activity {
             intent.setType("image/jpeg");
             intent.putExtra(Intent.EXTRA_STREAM,uri);
             intent.putExtra(Intent.EXTRA_SUBJECT,title);
-            intent.putExtra(Intent.EXTRA_TEXT,"فاتورة: "+title+"\nبقالة العزي للمواد الغذائية");
+            intent.putExtra(Intent.EXTRA_TEXT,"فاتورة: "+title+"\nبقالة العزي للمواد الغذائية للمواد الغذائية");
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(Intent.createChooser(intent,"مشاركة الفاتورة عبر"));
         }catch(Exception e){
