@@ -2432,7 +2432,7 @@ public class MainActivity extends Activity {
 
     ArrayList<PurchaseLine> loadPurchaseLines(long id){
         ArrayList<PurchaseLine> ls=new ArrayList<>();Cursor c=db.purchaseLines(id);
-        while(c.moveToNext())ls.add(new PurchaseLine(c.getString(1),c.getDouble(2),c.getDouble(5),c.getDouble(3),c.getDouble(4)));
+        while(c.moveToNext())ls.add(new PurchaseLine(c.getString(1),c.getDouble(2),c.getDouble(3),c.getDouble(4),c.getDouble(5)));
         c.close();return ls;
     }
     String purchaseReceiptText(String no,String supplier,ArrayList<PurchaseLine> lines,double total,String date){
