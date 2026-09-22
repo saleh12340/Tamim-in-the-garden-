@@ -1156,7 +1156,7 @@ public class MainActivity extends Activity {
             cacheLastInvoice(no,storedCustomer,lines,total,date);
             clearInvoiceDraft();
             saveReceiptImage(no,storedCustomer,lines,total);
-            showPostSaveActions(no,storedCustomer,lines,total,cid,paid);
+            showPostSaveActions(no,storedCustomer,lines,total,cid,paid,stockWarning);
         }catch(Exception ex){
             Toast.makeText(this,"تعذر حفظ الفاتورة بالكامل. لم يتم اعتماد العملية.",Toast.LENGTH_LONG).show();
         }finally{
