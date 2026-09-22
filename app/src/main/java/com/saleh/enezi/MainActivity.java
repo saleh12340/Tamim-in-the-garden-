@@ -7128,27 +7128,46 @@ public class MainActivity extends Activity {
         void replacePurchaseLines(long id,ArrayList<PurchaseLine> ls){SQLiteDatabase d=getWritableDatabase();for(PurchaseLine l:ls){ContentValues v=new ContentValues();v.put("purchase_id",id);v.put("name",l.name);v.put("qty",l.qty);v.put("cost",l.cost);v.put("sale",l.sale);v.put("total",l.total);d.insert("purchase_items",null,v);}}
         void updateStockFromPurchase(ArrayList<PurchaseLine> ls){SQLiteDatabase d=getWritableDatabase();for(PurchaseLine l:ls){Cursor c=d.rawQuery("SELECT id,qty FROM items WHERE name=? LIMIT 1",new String[]{l.name});if(c.moveToFirst()){long id=c.getLong(0);double q=c.getDouble(1);c.close();ContentValues v=new ContentValues();v.put("qty",q+l.qty);v.put("cost",l.cost);v.put("sale",l.sale);d.update("items",v,"id=?",new String[]{String.valueOf(id)});}else{c.close();ContentValues v=new ContentValues();v.put("name",l.name);v.put("qty",l.qty);v.put("min_qty",0);v.put("cost",l.cost);v.put("sale",l.sale);d.insert("items",null,v);}}}
         boolean canApplySaleStock(ArrayList<Line> ls,long oldInvoiceId){
+            // البيع مسموح حتى عند نفاد المخزون؛ يتم تسجيل العجز في المخزون بالسالب.
+            return true;
+        }
+        String saleStockWarning(ArrayList<Line> ls,long oldInvoiceId){
             SQLiteDatabase d=getReadableDatabase();
             HashMap<String,Double> needed=new HashMap<>();
+            HashMap<String,String> labels=new HashMap<>();
             if(oldInvoiceId>0){
                 Cursor old=d.rawQuery("SELECT name,qty FROM invoice_items WHERE invoice_id=?",new String[]{String.valueOf(oldInvoiceId)});
                 while(old.moveToNext()){
-                    String n=old.getString(0)==null?"":old.getString(0).trim().toLowerCase(Locale.ROOT);
+                    String raw=old.getString(0)==null?"":old.getString(0).trim();
+                    String n=raw.toLowerCase(Locale.ROOT);
                     if(!n.isEmpty()) needed.put(n,needed.getOrDefault(n,0.0)-old.getDouble(1));
                 }
                 old.close();
             }
             if(ls!=null) for(Line l:ls){
-                String n=l.name==null?"":l.name.trim().toLowerCase(Locale.ROOT);
-                if(!n.isEmpty()) needed.put(n,needed.getOrDefault(n,0.0)+Math.max(0,l.qty));
+                String raw=l.name==null?"":l.name.trim();
+                String n=raw.toLowerCase(Locale.ROOT);
+                if(!n.isEmpty()){
+                    needed.put(n,needed.getOrDefault(n,0.0)+Math.max(0,l.qty));
+                    labels.put(n,raw);
+                }
             }
+            StringBuilder w=new StringBuilder();
             for(Map.Entry<String,Double> e:needed.entrySet()){
                 if(e.getValue()<=0) continue;
-                Cursor c=d.rawQuery("SELECT COALESCE(qty,0) FROM items WHERE lower(trim(name))=? LIMIT 1",new String[]{e.getKey()});
-                double stock=c.moveToFirst()?c.getDouble(0):0; c.close();
-                if(stock+0.0001<e.getValue()) return false;
+                Cursor q=d.rawQuery("SELECT COALESCE(qty,0) FROM items WHERE lower(trim(name))=? LIMIT 1",new String[]{e.getKey()});
+                boolean exists=q.moveToFirst();
+                double stock=exists?q.getDouble(0):0;
+                q.close();
+                if(!exists || stock+0.0001<e.getValue()){
+                    if(w.length()>0) w.append("\n");
+                    w.append(labels.getOrDefault(e.getKey(),e.getKey()))
+                     .append(": المتوفر ").append(fmt(stock))
+                     .append("، المطلوب ").append(fmt(e.getValue()))
+                     .append(" — سيتم تسجيل العجز بالسالب.");
+                }
             }
-            return true;
+            return w.toString();
         }
         void revertStockFromInvoice(long invoiceId){
             if(invoiceId<=0)return;
@@ -7183,12 +7202,21 @@ public class MainActivity extends Activity {
                     String name=l.name==null?"":l.name.trim(); double q=Math.max(0,l.qty);
                     if(name.isEmpty()||q<=0)continue;
                     c=d.rawQuery("SELECT id,qty FROM items WHERE lower(trim(name))=? LIMIT 1",new String[]{name.toLowerCase(Locale.ROOT)});
-                    if(!c.moveToFirst()){c.close();c=null;continue;}
+                    if(!c.moveToFirst()){
+                        c.close(); c=null;
+                        ContentValues nv=new ContentValues();
+                        nv.put("name",name); nv.put("qty",-q); nv.put("min_qty",0); nv.put("cost",0); nv.put("sale",0);
+                        long iid=d.insert("items",null,nv);
+                        if(iid>0){
+                            ContentValues mv=new ContentValues(); mv.put("item_id",iid); mv.put("item_name",name); mv.put("qty",-q); mv.put("unit_cost",0); mv.put("source_type","sale"); mv.put("source_id",invoiceId); mv.put("created_at",now());
+                            d.insert("stock_movements",null,mv);
+                        }
+                        continue;
+                    }
                     long iid=c.getLong(0); double current=c.getDouble(1); c.close(); c=null;
-                    if(current+0.0001<q) return false;
                     ContentValues v=new ContentValues(); v.put("qty",current-q);
                     d.update("items",v,"id=?",new String[]{String.valueOf(iid)});
-                    ContentValues mv=new ContentValues(); mv.put("item_id",iid); mv.put("item_name",name); mv.put("qty",-q); mv.put("unit_cost",itemCostPrice(name)); mv.put("source_type","sale"); mv.put("source_id",invoiceId); mv.put("created_at",now());
+                    ContentValues mv=new ContentValues(); mv.put("item_id",iid); mv.put("item_name",name); mv.put("qty",-q); mv.put("unit_cost",itemCostPrice(name)); mv.put("source_type","sale"); mv.put("source_id",invoiceId); mv.put("created_at",now);
                     d.insert("stock_movements",null,mv);
                 }
                 return true;
