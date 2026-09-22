@@ -2447,7 +2447,8 @@ public class MainActivity extends Activity {
         for(PurchaseLine l:lines){
             String n=l.name==null?"":l.name.trim();
             s.append("▪️ ").append(n).append(" × ").append(fmt(l.qty)).append(" = ").append(fmt(l.total)).append(" ر.ي\n");
-            s.append("   سعر الشراء للوحدة: ").append(fmt(l.cost)).append(" ر.ي\n");\n            s.append("   سعر البيع: ").append(fmt(l.sale)).append(" ر.ي\n");
+            s.append("   سعر الشراء للوحدة: ").append(fmt(l.cost)).append(" ر.ي\n");
+            s.append("   سعر البيع: ").append(fmt(l.sale)).append(" ر.ي\n");
         }
         s.append("━━━━━━━━━━━━━━━━━━\n");
         s.append("💰 *إجمالي فاتورة الشراء:* ").append(fmt(total)).append(" ريال\n");
