@@ -2487,16 +2487,11 @@ public class MainActivity extends Activity {
         fillP.setColor(Color.rgb(255,250,240));
         canvas.drawRoundRect(12,12,width-12,82,10,10,fillP);
 
-        try{
-            Drawable d=getResources().getDrawable(com.saleh.enezi.R.drawable.ic_store);
-            int isz=46;
-            d.setBounds(margin+8,18,margin+8+isz,18+isz);
-            d.draw(canvas);
-        }catch(Exception ignored){}
-
         p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextSize(22);p.setColor(GOLD);p.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText("بقالة العزي للمواد الغذائية",width-margin-10,44,p);
+        canvas.drawText("بقالة العزي للمواد الغذائية",width-margin-10,40,p);
+        p.setTextSize(11.5f);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+        canvas.drawText("مستقبل تجارتك يبدأ من هنا",width-margin-10,58,p);
 
         p.setTextSize(12f);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
         canvas.drawText("فاتورة شراء #"+no+"  •  "+(date==null||date.isEmpty()?db.now():date),width-margin-10,68,p);
@@ -3595,12 +3590,6 @@ public class MainActivity extends Activity {
         canvas.drawRoundRect(12,12,width-12,82,10,10,fillP);
 
         // Store Icon & Title
-        try{
-            Drawable d=getResources().getDrawable(com.saleh.enezi.R.drawable.ic_store);
-            int isz=46;
-            d.setBounds(margin+8,18,margin+8+isz,18+isz);
-            d.draw(canvas);
-        }catch(Exception ignored){}
 
         p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextSize(23);p.setColor(GREEN);p.setTextAlign(Paint.Align.RIGHT);
@@ -3726,13 +3715,6 @@ public class MainActivity extends Activity {
         p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
         p.setColor(black);
         p.setTextAlign(Paint.Align.CENTER);
-
-        try{
-            Drawable d=getResources().getDrawable(com.saleh.enezi.R.drawable.ic_store);
-            int size=50;
-            d.setBounds((width-size)/2,8,(width+size)/2,8+size);
-            d.draw(canvas);
-        }catch(Exception ignored){}
 
         p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextSize(19);p.setColor(green);canvas.drawText("بقالة العزي للمواد الغذائية",width/2,80,p);
@@ -4718,16 +4700,11 @@ public class MainActivity extends Activity {
         fillP.setColor(Color.rgb(240,248,242));
         c.drawRoundRect(12,12,width-12,82,10,10,fillP);
 
-        try{
-            Drawable d=getResources().getDrawable(com.saleh.enezi.R.drawable.ic_store);
-            int isz=46;
-            d.setBounds(margin+8,18,margin+8+isz,18+isz);
-            d.draw(c);
-        }catch(Exception ignored){}
-
         p.setTypeface(Typeface.create("sans",Typeface.BOLD));
         p.setTextSize(23);p.setColor(GREEN);p.setTextAlign(Paint.Align.RIGHT);
-        c.drawText("بقالة العزي للمواد الغذائية",width-margin-10,44,p);
+        c.drawText("بقالة العزي للمواد الغذائية",width-margin-10,40,p);
+        p.setTextSize(11.5f);p.setTypeface(Typeface.create("sans",Typeface.BOLD));
+        c.drawText("مستقبل تجارتك يبدأ من هنا",width-margin-10,58,p);
         p.setTextSize(12.5f);p.setColor(DARK);p.setTypeface(Typeface.create("sans",Typeface.NORMAL));
         c.drawText("سند قيد مالي إلكتروني  •  إشعار حركة",width-margin-10,68,p);
 
