@@ -1125,10 +1125,7 @@ public class MainActivity extends Activity {
         boolean cashCustomer=customerName.isEmpty() || "نقدي".equals(customerName) || "عميل نقدي".equals(customerName);
         if(paid<0 || total<0){Toast.makeText(this,"بيانات الفاتورة غير صحيحة.",Toast.LENGTH_SHORT).show();return;}
         if(lines==null||lines.isEmpty()){Toast.makeText(this,"أضف صنفاً واحداً على الأقل.",Toast.LENGTH_SHORT).show();return;}
-        if(!db.canApplySaleStock(lines,edit?oldId:-1)){
-            Toast.makeText(this,"لا يمكن حفظ الفاتورة: توجد كمية غير متوفرة في المخزون.",Toast.LENGTH_LONG).show();
-            return;
-        }
+        String stockWarning=db.saleStockWarning(lines,edit?oldId:-1);
         String storedCustomer=cashCustomer?"نقدي":customerName;
         long cid=cashCustomer?-1:db.customer(storedCustomer,phone==null?"":phone);
         String date=db.now();
@@ -7216,7 +7213,7 @@ public class MainActivity extends Activity {
                     long iid=c.getLong(0); double current=c.getDouble(1); c.close(); c=null;
                     ContentValues v=new ContentValues(); v.put("qty",current-q);
                     d.update("items",v,"id=?",new String[]{String.valueOf(iid)});
-                    ContentValues mv=new ContentValues(); mv.put("item_id",iid); mv.put("item_name",name); mv.put("qty",-q); mv.put("unit_cost",itemCostPrice(name)); mv.put("source_type","sale"); mv.put("source_id",invoiceId); mv.put("created_at",now);
+                    ContentValues mv=new ContentValues(); mv.put("item_id",iid); mv.put("item_name",name); mv.put("qty",-q); mv.put("unit_cost",itemCostPrice(name)); mv.put("source_type","sale"); mv.put("source_id",invoiceId); mv.put("created_at",now());
                     d.insert("stock_movements",null,mv);
                 }
                 return true;
