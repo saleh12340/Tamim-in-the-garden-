@@ -2447,7 +2447,7 @@ public class MainActivity extends Activity {
         for(PurchaseLine l:lines){
             String n=l.name==null?"":l.name.trim();
             s.append("▪️ ").append(n).append(" × ").append(fmt(l.qty)).append(" = ").append(fmt(l.total)).append(" ر.ي\n");
-            s.append("   (تكلفة الوحدة: ").append(fmt(l.cost)).append(" • سعر البيع: ").append(fmt(l.sale)).append(" ر.ي)\n");
+            s.append("   سعر الشراء للوحدة: ").append(fmt(l.cost)).append(" ر.ي\n");\n            s.append("   سعر البيع: ").append(fmt(l.sale)).append(" ر.ي\n");
         }
         s.append("━━━━━━━━━━━━━━━━━━\n");
         s.append("💰 *إجمالي فاتورة الشراء:* ").append(fmt(total)).append(" ريال\n");
@@ -2704,7 +2704,7 @@ public class MainActivity extends Activity {
             s.append("------------------------------\nالصنف | الكمية | الإجمالي\n");
             for(PurchaseLine l:lines){
                 s.append(l.name==null?"":l.name.trim()).append(" | ").append(fmt(l.qty)).append(" | ").append(fmt(l.total)).append("\n");
-                s.append("تكلفة: ").append(fmt(l.cost)).append("  •  بيع: ").append(fmt(l.sale)).append(" ريال\n");
+                s.append("سعر الشراء للوحدة: ").append(fmt(l.cost)).append(" ريال  •  سعر البيع: ").append(fmt(l.sale)).append(" ريال\n");
             }
             s.append("------------------------------\nالإجمالي: ").append(fmt(total)).append(" ريال\nشكراً لتعاملكم معنا");
             printTextBluetooth(s.toString());
