@@ -445,7 +445,7 @@ public class MainActivity extends Activity {
         headBackup.setOnClickListener(v->showBackupRestore());
         header.addView(headBackup,hblp);
 
-        root.addView(header,new LinearLayout.LayoutParams(-1,dp(66)));
+        root.addView(header,new LinearLayout.LayoutParams(-1,dp(74)));
 
         // الوسط: شريط التمرير لمحتويات الصفحة الرئيسية
         ScrollView middleScroll=new ScrollView(this);
@@ -453,7 +453,7 @@ public class MainActivity extends Activity {
         middleScroll.setClipToPadding(false);
         LinearLayout middle=new LinearLayout(this);
         middle.setOrientation(LinearLayout.VERTICAL);
-        middle.setPadding(dp(8),dp(10),dp(8),dp(12));
+        middle.setPadding(dp(10),dp(12),dp(10),dp(18));
         middle.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
         // 1. بطاقة الزر الرئيسي الكبير لإنشاء فاتورة فورية
@@ -504,7 +504,7 @@ public class MainActivity extends Activity {
         heroCard.addView(heroArrow,new LinearLayout.LayoutParams(dp(28),dp(28)));
 
         heroCard.setOnClickListener(v->invoice());
-        middle.addView(heroCard,new LinearLayout.LayoutParams(-1,dp(68)));
+        middle.addView(heroCard,new LinearLayout.LayoutParams(-1,dp(82)));
         addSpaceTo(middle,10);
 
         // 2. شبكة المؤشرات والإحصائيات السريعة (4 كروت سريعة تفاعلية مع حركة اليوم)
@@ -526,11 +526,11 @@ public class MainActivity extends Activity {
 
         LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(0,dp(72),1);
         metricsGrid.addView(m1,mp);
-        LinearLayout.LayoutParams mp2=new LinearLayout.LayoutParams(0,dp(72),1); mp2.setMargins(dp(5),0,0,0); metricsGrid.addView(m2,mp2);
-        LinearLayout.LayoutParams mp3=new LinearLayout.LayoutParams(0,dp(72),1); mp3.setMargins(dp(5),0,0,0); metricsGrid.addView(m3,mp3);
-        LinearLayout.LayoutParams mp4=new LinearLayout.LayoutParams(0,dp(72),1); mp4.setMargins(dp(5),0,0,0); metricsGrid.addView(m4,mp4);
+        LinearLayout.LayoutParams mp2=new LinearLayout.LayoutParams(0,dp(86),1); mp2.setMargins(dp(5),0,0,0); metricsGrid.addView(m2,mp2);
+        LinearLayout.LayoutParams mp3=new LinearLayout.LayoutParams(0,dp(86),1); mp3.setMargins(dp(5),0,0,0); metricsGrid.addView(m3,mp3);
+        LinearLayout.LayoutParams mp4=new LinearLayout.LayoutParams(0,dp(86),1); mp4.setMargins(dp(5),0,0,0); metricsGrid.addView(m4,mp4);
 
-        middle.addView(metricsGrid,new LinearLayout.LayoutParams(-1,dp(72)));
+        middle.addView(metricsGrid,new LinearLayout.LayoutParams(-1,dp(86)));
         addSpaceTo(middle,12);
 
         // 3. عنوان قسم التبويبات الكبيرة
@@ -546,9 +546,9 @@ public class MainActivity extends Activity {
         row1.setOrientation(LinearLayout.HORIZONTAL); row1.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         View cAccounts=createModernTabCard("👥","العملاء والحسابات","كشوفات الحسابات والديون",GREEN,0,v->customers());
         View cInvoices=createModernTabCard("🧾","سجل فواتير البيع","عرض وطباعة ومشاركة",Color.rgb(28,105,210),0,v->invoiceHistory());
-        row1.addView(cAccounts,new LinearLayout.LayoutParams(0,dp(78),1));
-        LinearLayout.LayoutParams r1p=new LinearLayout.LayoutParams(0,dp(78),1); r1p.setMargins(dp(6),0,0,0); row1.addView(cInvoices,r1p);
-        middle.addView(row1,new LinearLayout.LayoutParams(-1,dp(78)));
+        row1.addView(cAccounts,new LinearLayout.LayoutParams(0,dp(92),1));
+        LinearLayout.LayoutParams r1p=new LinearLayout.LayoutParams(0,dp(92),1); r1p.setMargins(dp(6),0,0,0); row1.addView(cInvoices,r1p);
+        middle.addView(row1,new LinearLayout.LayoutParams(-1,dp(92)));
         addSpaceTo(middle,8);
 
         // الصف 2: الماسح الضوئي الذكي + فواتير الشراء
@@ -556,9 +556,9 @@ public class MainActivity extends Activity {
         row2.setOrientation(LinearLayout.HORIZONTAL); row2.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         View cScanner=createModernTabCard("📷","الماسح الضوئي","تصوير واقتصاص الفواتير",Color.rgb(18,140,75),db.scannedInvoiceCount(),v->scanner());
         View cPurchase=createModernTabCard("🛒","فواتير الشراء","مشتريات وحساب الموردين",GOLD,0,v->purchaseInvoices());
-        row2.addView(cScanner,new LinearLayout.LayoutParams(0,dp(78),1));
-        LinearLayout.LayoutParams r2p=new LinearLayout.LayoutParams(0,dp(78),1); r2p.setMargins(dp(6),0,0,0); row2.addView(cPurchase,r2p);
-        middle.addView(row2,new LinearLayout.LayoutParams(-1,dp(78)));
+        row2.addView(cScanner,new LinearLayout.LayoutParams(0,dp(92),1));
+        LinearLayout.LayoutParams r2p=new LinearLayout.LayoutParams(0,dp(92),1); r2p.setMargins(dp(6),0,0,0); row2.addView(cPurchase,r2p);
+        middle.addView(row2,new LinearLayout.LayoutParams(-1,dp(92)));
         addSpaceTo(middle,8);
 
         // الصف 3: المخزون والأصناف + التقارير المالية
@@ -566,9 +566,9 @@ public class MainActivity extends Activity {
         row3.setOrientation(LinearLayout.HORIZONTAL); row3.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         View cInventory=createModernTabCard("📦","المخزون والأصناف","متابعة البضاعة والأسعار",Color.rgb(14,130,135),0,v->inventory());
         View cReports=createModernTabCard("📊","التقارير المالية","الأرباح وحركة الصندوق",Color.rgb(115,55,175),0,v->reports());
-        row3.addView(cInventory,new LinearLayout.LayoutParams(0,dp(78),1));
-        LinearLayout.LayoutParams r3p=new LinearLayout.LayoutParams(0,dp(78),1); r3p.setMargins(dp(6),0,0,0); row3.addView(cReports,r3p);
-        middle.addView(row3,new LinearLayout.LayoutParams(-1,dp(78)));
+        row3.addView(cInventory,new LinearLayout.LayoutParams(0,dp(92),1));
+        LinearLayout.LayoutParams r3p=new LinearLayout.LayoutParams(0,dp(92),1); r3p.setMargins(dp(6),0,0,0); row3.addView(cReports,r3p);
+        middle.addView(row3,new LinearLayout.LayoutParams(-1,dp(92)));
         addSpaceTo(middle,8);
 
         // الصف 4: دفتر الملاحظات + إجراءات سريعة
@@ -576,9 +576,9 @@ public class MainActivity extends Activity {
         row4.setOrientation(LinearLayout.HORIZONTAL); row4.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         View cNotes=createModernTabCard("📝","دفتر الملاحظات","مسودات وقوائم الطلبيات",Color.rgb(130,70,170),0,v->notes());
         View cGeneral=createModernTabCard("⚡","إجراءات سريعة","خيارات وعمليات إضافية",Color.rgb(70,90,110),0,v->showGeneralActions());
-        row4.addView(cNotes,new LinearLayout.LayoutParams(0,dp(78),1));
-        LinearLayout.LayoutParams r4p=new LinearLayout.LayoutParams(0,dp(78),1); r4p.setMargins(dp(6),0,0,0); row4.addView(cGeneral,r4p);
-        middle.addView(row4,new LinearLayout.LayoutParams(-1,dp(78)));
+        row4.addView(cNotes,new LinearLayout.LayoutParams(0,dp(92),1));
+        LinearLayout.LayoutParams r4p=new LinearLayout.LayoutParams(0,dp(92),1); r4p.setMargins(dp(6),0,0,0); row4.addView(cGeneral,r4p);
+        middle.addView(row4,new LinearLayout.LayoutParams(-1,dp(92)));
         addSpaceTo(middle,12);
 
         middleScroll.addView(middle);
