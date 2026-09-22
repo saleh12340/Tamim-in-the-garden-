@@ -5179,9 +5179,10 @@ public class MainActivity extends Activity {
 
     void reports(){
         base("التقارير المالية");
-        section("ملخص الأداء والحركة");
+        section("ملخص الأداء والحركة اليومية والشاملة");
 
         try{
+            // Summary Cards Grid
             LinearLayout statGrid=new LinearLayout(this);
             statGrid.setOrientation(LinearLayout.HORIZONTAL);
             statGrid.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
@@ -5227,88 +5228,171 @@ public class MainActivity extends Activity {
             content.addView(statGrid,new LinearLayout.LayoutParams(-1,-2));
             addSpace(8);
 
-            section("جميع حركات التطبيق (الأحدث أولاً)");
+            // Filter Tabs Bar
+            section("فلترة الحركات والتقارير");
+            LinearLayout filterBar=new LinearLayout(this);
+            filterBar.setOrientation(LinearLayout.HORIZONTAL);
+            filterBar.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
-            Cursor c=db.recentActivity();
-            int actCount=0;
-            while(c.moveToNext()){
-                int kind=c.getInt(0);
-                String ref=c.getString(1);
-                String title=c.getString(2);
-                double amount=c.getDouble(3);
-                String date=c.getString(4);
-                long sortId=c.getLong(5);
-                int operationType=c.getInt(6);
-                actCount++;
+            Button fAll=button("🗂️ الكل");
+            Button fSales=button("🧾 المبيعات");
+            Button fPurchases=button("🛒 المشتريات");
+            Button fOps=button("💵 الحركات");
 
-                final int fk=kind;
-                final String fr=ref==null?"":ref;
-                final String ft=title==null?"":title;
-                final double fa=amount;
-                final String fd=date==null?"":date;
-                final long fid=sortId;
+            fAll.setTextSize(11f); fSales.setTextSize(11f); fPurchases.setTextSize(11f); fOps.setTextSize(11f);
 
-                int activityColor=(kind==3)?GOLD:((kind==2 && operationType==1)?RED:BLUE);
+            final int FILTER_ALL=0, FILTER_SALES=1, FILTER_PURCHASES=2, FILTER_OPS=3;
+            final int[] currentFilter={FILTER_ALL};
 
-                LinearLayout row=card();
-                row.setPadding(dp(10),dp(8),dp(10),dp(8));
-                row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+            Runnable[] applyFilterStyle=new Runnable[1];
 
-                GradientDrawable rBg=new GradientDrawable();
-                rBg.setColor(CARD);
-                rBg.setCornerRadius(dp(12));
-                rBg.setStroke(dp(1),kind==1?Color.rgb(205,235,215):(kind==3?Color.rgb(245,225,185):(operationType==1?Color.rgb(250,215,215):Color.rgb(215,230,250))));
-                row.setBackground(rBg);
+            LinearLayout reportsListContainer=new LinearLayout(this);
+            reportsListContainer.setOrientation(LinearLayout.VERTICAL);
+            reportsListContainer.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
-                String label=kind==1?"🧾 فاتورة مبيعات":(kind==3?"🛒 فاتورة شراء":(operationType==1?"🔴 عليه":"🔵 له"));
-                String shortTitle=ft;
+            Runnable renderReportsList=()->{
+                reportsListContainer.removeAllViews();
+                try{
+                    Cursor c=db.recentActivity();
+                    int actCount=0;
+                    while(c.moveToNext()){
+                        int kind=c.getInt(0); // 1: sales invoice, 2: transaction, 3: purchase invoice
+                        String ref=c.getString(1);
+                        String title=c.getString(2);
+                        double amount=c.getDouble(3);
+                        String date=c.getString(4);
+                        long sortId=c.getLong(5);
+                        int operationType=c.getInt(6);
 
-                LinearLayout topRow=new LinearLayout(this);
-                topRow.setOrientation(LinearLayout.HORIZONTAL);
-                topRow.setGravity(Gravity.CENTER_VERTICAL);
-                topRow.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+                        // Apply filter
+                        if(currentFilter[0]==FILTER_SALES && kind!=1) continue;
+                        if(currentFilter[0]==FILTER_PURCHASES && kind!=3) continue;
+                        if(currentFilter[0]==FILTER_OPS && kind!=2) continue;
 
-                TextView main=tv(label+" • "+shortTitle,12.5f);
-                main.setTextColor(kind==1?GREEN:activityColor);
-                main.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-                main.setMaxLines(1);
-                topRow.addView(main,new LinearLayout.LayoutParams(0,-2,1));
+                        actCount++;
 
-                TextView valTv=tv(fmt(fa)+" ر.ي",13);
-                valTv.setTextColor(kind==1?GREEN:activityColor);
-                valTv.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
-                topRow.addView(valTv,new LinearLayout.LayoutParams(-2,-2));
+                        final int fk=kind;
+                        final String fr=ref==null?"":ref;
+                        final String ft=title==null?"":title;
+                        final double fa=amount;
+                        final String fd=date==null?"":date;
+                        final long fid=sortId;
 
-                row.addView(topRow,new LinearLayout.LayoutParams(-1,-2));
-                addSpaceTo(row,3);
+                        int activityColor=(kind==3)?GOLD:((kind==2 && operationType==1)?RED:BLUE);
 
-                TextView meta=tv("📅 "+fd,10);
-                meta.setTextColor(MUTED);
-                row.addView(meta,new LinearLayout.LayoutParams(-1,-2));
+                        LinearLayout row=card();
+                        row.setPadding(dp(10),dp(8),dp(10),dp(8));
+                        row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
-                row.setOnClickListener(v->{
-                    if(fk==3){
-                        showPurchaseInvoiceDialog(fid,fr,db.purchaseSupplier(fid),fa,fd);
-                    }else showReportActivityDetails(fk,fr,ft,fa,fd,fid);
-                });
+                        GradientDrawable rBg=new GradientDrawable();
+                        rBg.setColor(CARD);
+                        rBg.setCornerRadius(dp(12));
+                        rBg.setStroke(dp(1),kind==1?Color.rgb(205,235,215):(kind==3?Color.rgb(245,225,185):(operationType==1?Color.rgb(250,215,215):Color.rgb(215,230,250))));
+                        row.setBackground(rBg);
 
-                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
-                lp.setMargins(0,0,0,dp(6));
-                content.addView(row,lp);
-            }
-            c.close();
+                        String label=kind==1?"🧾 فاتورة مبيعات":(kind==3?"🛒 فاتورة شراء":(operationType==1?"🔴 عليه (مدين)":"🔵 له (دائن)"));
+                        
+                        // For sales invoice, check paid vs remaining/debt
+                        String paymentBadge="";
+                        if(kind==1){
+                            long invId=db.invoiceIdByNo(fr);
+                            if(invId>0){
+                                double tot=db.invoiceTotal(invId);
+                                double paid=db.invoicePaid(invId);
+                                double rem=tot-paid;
+                                if(rem<=0.005) paymentBadge=" [نقدي مسدد بالكامل]";
+                                else if(paid<=0.005) paymentBadge=" [آجل بالكامل - مدين]";
+                                else paymentBadge=" [مسدد جزئياً - باقي: "+fmt(rem)+" ر.ي]";
+                            }
+                        }
 
-            if(actCount==0){
-                LinearLayout emptyBox=card();
-                emptyBox.setPadding(dp(16),dp(16),dp(16),dp(16));
-                emptyBox.setGravity(Gravity.CENTER);
-                TextView em=tv("📊 لا توجد عمليات أو فواتير مسجلة حتى الآن",12.5f);
-                em.setTextColor(MUTED); em.setGravity(Gravity.CENTER);
-                emptyBox.addView(em,new LinearLayout.LayoutParams(-1,dp(30)));
-                content.addView(emptyBox,new LinearLayout.LayoutParams(-1,-2));
-            }
+                        LinearLayout topRow=new LinearLayout(this);
+                        topRow.setOrientation(LinearLayout.HORIZONTAL);
+                        topRow.setGravity(Gravity.CENTER_VERTICAL);
+                        topRow.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+                        TextView main=tv(label+" • "+ft+paymentBadge,12f);
+                        main.setTextColor(kind==1?GREEN:activityColor);
+                        main.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                        main.setMaxLines(2);
+                        topRow.addView(main,new LinearLayout.LayoutParams(0,-2,1));
+
+                        TextView valTv=tv(fmt(fa)+" ر.ي",12.5f);
+                        valTv.setTextColor(kind==1?GREEN:activityColor);
+                        valTv.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+                        topRow.addView(valTv,new LinearLayout.LayoutParams(-2,-2));
+
+                        row.addView(topRow,new LinearLayout.LayoutParams(-1,-2));
+                        addSpaceTo(row,3);
+
+                        TextView meta=tv("📅 "+fd,10);
+                        meta.setTextColor(MUTED);
+                        row.addView(meta,new LinearLayout.LayoutParams(-1,-2));
+
+                        row.setOnClickListener(v->{
+                            if(fk==3){
+                                showPurchaseInvoiceDialog(fid,fr,db.purchaseSupplier(fid),fa,fd);
+                            }else showReportActivityDetails(fk,fr,ft,fa,fd,fid);
+                        });
+
+                        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
+                        lp.setMargins(0,0,0,dp(6));
+                        reportsListContainer.addView(row,lp);
+                    }
+                    c.close();
+
+                    if(actCount==0){
+                        LinearLayout emptyBox=card();
+                        emptyBox.setPadding(dp(16),dp(16),dp(16),dp(16));
+                        emptyBox.setGravity(Gravity.CENTER);
+                        TextView em=tv("📊 لا توجد حركات مطابقة لهذا الفلتر",12.5f);
+                        em.setTextColor(MUTED); em.setGravity(Gravity.CENTER);
+                        emptyBox.addView(em,new LinearLayout.LayoutParams(-1,dp(30)));
+                        reportsListContainer.addView(emptyBox,new LinearLayout.LayoutParams(-1,-2));
+                    }
+                }catch(Exception e){
+                    TextView err=tv("تعذر تحميل الحركات.",11);
+                    err.setTextColor(Color.rgb(170,75,35));
+                    reportsListContainer.addView(err,new LinearLayout.LayoutParams(-1,dp(40)));
+                }
+            };
+
+            applyFilterStyle[0]=()->{
+                fAll.setTextColor(currentFilter[0]==FILTER_ALL?Color.WHITE:TEXT);
+                fAll.setBackground(currentFilter[0]==FILTER_ALL?rounded(GREEN,dp(10)):outline(CARD,10));
+
+                fSales.setTextColor(currentFilter[0]==FILTER_SALES?Color.WHITE:TEXT);
+                fSales.setBackground(currentFilter[0]==FILTER_SALES?rounded(GREEN,dp(10)):outline(CARD,10));
+
+                fPurchases.setTextColor(currentFilter[0]==FILTER_PURCHASES?Color.WHITE:GOLD);
+                fPurchases.setBackground(currentFilter[0]==FILTER_PURCHASES?rounded(GOLD,dp(10)):outline(CARD,10));
+
+                fOps.setTextColor(currentFilter[0]==FILTER_OPS?Color.WHITE:TEXT);
+                fOps.setBackground(currentFilter[0]==FILTER_OPS?rounded(BLUE,dp(10)):outline(CARD,10));
+
+                renderReportsList.run();
+            };
+
+            fAll.setOnClickListener(v->{currentFilter[0]=FILTER_ALL; applyFilterStyle[0].run();});
+            fSales.setOnClickListener(v->{currentFilter[0]=FILTER_SALES; applyFilterStyle[0].run();});
+            fPurchases.setOnClickListener(v->{currentFilter[0]=FILTER_PURCHASES; applyFilterStyle[0].run();});
+            fOps.setOnClickListener(v->{currentFilter[0]=FILTER_OPS; applyFilterStyle[0].run();});
+
+            filterBar.addView(fAll,new LinearLayout.LayoutParams(0,dp(36),1));
+            LinearLayout.LayoutParams flp=new LinearLayout.LayoutParams(0,dp(36),1); flp.setMargins(dp(3),0,0,0);
+            filterBar.addView(fSales,flp);
+            filterBar.addView(fPurchases,flp);
+            filterBar.addView(fOps,flp);
+
+            content.addView(filterBar,new LinearLayout.LayoutParams(-1,dp(38)));
+            addSpace(8);
+
+            content.addView(reportsListContainer,new LinearLayout.LayoutParams(-1,-2));
+
+            applyFilterStyle[0].run();
+
         }catch(Exception e){
-            TextView err=tv("تعذر تحميل سجل الحركات. يمكنك الاستمرار باستخدام بقية الشاشات.",11);
+            TextView err=tv("تعذر تحميل التقارير المالية.",11);
             err.setTextColor(Color.rgb(170,75,35));
             content.addView(err,new LinearLayout.LayoutParams(-1,dp(44)));
         }
