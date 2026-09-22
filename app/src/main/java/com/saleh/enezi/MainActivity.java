@@ -12,6 +12,8 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.provider.MediaStore;
 import android.text.Layout;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.text.TextPaint;
 import android.text.StaticLayout;
 import android.text.TextUtils;
@@ -2290,6 +2292,19 @@ public class MainActivity extends Activity {
             dlg.getWindow().setGravity(Gravity.CENTER);
         }
         dlg.show();
+    }
+
+    void confirmDeleteInvoice(long id,String no){
+        new AlertDialog.Builder(this)
+            .setTitle("حذف فاتورة المبيعات")
+            .setMessage("هل تريد حذف فاتورة المبيعات رقم #"+no+"؟ سيتم حذف تفاصيلها والحركات المحاسبية المرتبطة بها.")
+            .setPositiveButton("حذف",(d,w)->{
+                db.deleteInvoice(id);
+                Toast.makeText(this,"تم حذف الفاتورة بنجاح",Toast.LENGTH_SHORT).show();
+                invoiceHistory();
+            })
+            .setNegativeButton("إلغاء",null)
+            .show();
     }
 
     void confirmDeletePurchaseInvoice(long id,String no){
