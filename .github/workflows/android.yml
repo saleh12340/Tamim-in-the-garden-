@@ -46,3 +46,11 @@ jobs:
           name: Tamim-Al-Azzi-debug-apk
           path: build_output/*.apk
           if-no-files-found: error
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-failure-log
+          path: build.log
+          if-no-files-found: ignore

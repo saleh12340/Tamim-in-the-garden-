@@ -120,6 +120,7 @@ public class MainActivity extends Activity {
         e.setKeyListener(DigitsKeyListener.getInstance("0123456789."));
         return e;
     }
+    EditText inputNumber(String h){return numberField(h);}
     EditText phoneField(String h){
         EditText e=field(h);
         e.setInputType(InputType.TYPE_CLASS_PHONE);
@@ -2098,7 +2099,7 @@ public class MainActivity extends Activity {
         TextView reqLabel=tv("المطلوب دفعه:",12);
         reqLabel.setTextColor(TEXT);
         reqRow.addView(reqLabel,new LinearLayout.LayoutParams(-2,-2));
-        EditText reqEt=inputNumber("0");
+        EditText reqEt=numberField("0");
         if(initialTotal>0) reqEt.setText(fmt(initialTotal));
         reqEt.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
         reqEt.setTextSize(15);
@@ -2115,7 +2116,7 @@ public class MainActivity extends Activity {
         TextView paidLabel=tv("المستلم من الزبون:",12);
         paidLabel.setTextColor(TEXT);
         paidRow.addView(paidLabel,new LinearLayout.LayoutParams(-2,-2));
-        EditText paidEt=inputNumber("");
+        EditText paidEt=numberField("");
         paidEt.setHint("أدخل أو اختر فئة");
         paidEt.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
         paidEt.setTextSize(15);
