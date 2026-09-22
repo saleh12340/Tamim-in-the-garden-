@@ -131,10 +131,51 @@ export default function App() {
   };
 
   const handleDeleteInvoice = (invoiceId) => {
-    setData((prev) => ({
-      ...prev,
-      invoices: prev.invoices.filter((i) => i.id !== invoiceId)
-    }));
+    setData((prev) => {
+      const invoice = prev.invoices.find((i) => i.id === invoiceId);
+      if (!invoice) return prev;
+
+      // Revert the invoice's stock impact before deleting it.
+      let updatedInventory = [...prev.inventory];
+      (invoice.items || []).forEach((soldItem) => {
+        const idx = updatedInventory.findIndex(
+          (p) => p.name?.trim().toLowerCase() === soldItem.name?.trim().toLowerCase()
+        );
+        if (idx !== -1) {
+          updatedInventory[idx] = {
+            ...updatedInventory[idx],
+            stock: (updatedInventory[idx].stock || 0) + (soldItem.qty || 0)
+          };
+        }
+      });
+
+      // Reverse only the two automatic account entries belonging to this invoice.
+      const invoiceMarker = String(invoice.number);
+      const autoTx = prev.transactions.filter((tx) => {
+        const details = String(tx.details || '');
+        return details === `فاتورة مبيعات رقم #${invoiceMarker}` ||
+          details === `دفعة سداد فاتورة رقم #${invoiceMarker}`;
+      });
+
+      let updatedCustomers = [...prev.customers];
+      autoTx.forEach((tx) => {
+        const idx = updatedCustomers.findIndex((c) => c.id === tx.customerId);
+        if (idx === -1) return;
+        const delta = tx.type === 'debit' ? -Number(tx.amount || 0) : Number(tx.amount || 0);
+        updatedCustomers[idx] = {
+          ...updatedCustomers[idx],
+          balance: (updatedCustomers[idx].balance || 0) + delta
+        };
+      });
+
+      return {
+        ...prev,
+        invoices: prev.invoices.filter((i) => i.id !== invoiceId),
+        inventory: updatedInventory,
+        customers: updatedCustomers,
+        transactions: prev.transactions.filter((tx) => !autoTx.some((x) => x.id === tx.id))
+      };
+    });
   };
 
   // Customer Handlers
