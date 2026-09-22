@@ -1670,13 +1670,18 @@ public class MainActivity extends Activity {
         delBtn.setOnClickListener(v->{
             dlg.dismiss();
             new AlertDialog.Builder(this)
-                .setTitle("حذف العملية؟")
-                .setMessage("هل تريد حذف هذه العملية المالية؟")
+                .setTitle(isInvoice?"حذف الفاتورة المرتبطة؟":"حذف العملية؟")
+                .setMessage(isInvoice?"هذه الحركة مرتبطة بفاتورة مبيعات. سيتم حذف الفاتورة بالكامل وإرجاع المخزون والحركات المرتبطة بها.":"سيتم حذف الحركة من حساب العميل.")
                 .setPositiveButton("حذف",(x,y)->{
-                    db.deleteTransaction(tid);
+                    if(isInvoice){
+                        long iid=db.invoiceIdByNo(invNo);
+                        if(iid>0) db.deleteInvoice(iid);
+                    }else{
+                        db.deleteTransaction(tid);
+                    }
                     if(cid>0) account(cid,customer);
                     else customers();
-                    Toast.makeText(this,"تم حذف العملية",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this,isInvoice?"تم حذف الفاتورة وتحديث الحساب والمخزون":"تم حذف العملية",Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("إلغاء",null).show();
         });
