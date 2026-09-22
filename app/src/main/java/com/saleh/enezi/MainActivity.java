@@ -904,23 +904,6 @@ public class MainActivity extends Activity {
         final ArrayList<Line> lines=new ArrayList<>();
         if(edit){Cursor c=db.invoiceLines(invoiceId);while(c.moveToNext())lines.add(new Line(c.getString(1),c.getDouble(2),c.getDouble(3)));c.close();}
 
-        // أزرار الحفظ المؤقت
-        LinearLayout draftActions=new LinearLayout(this);
-        draftActions.setOrientation(LinearLayout.HORIZONTAL);
-        draftActions.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
-        Button saveDraft=button("💾 حفظ مؤقت");
-        Button restoreDraft=button("↩ استعادة مسودة");
-        saveDraft.setTextSize(12); restoreDraft.setTextSize(12);
-        saveDraft.setTextColor(GREEN); saveDraft.setBackground(outline(CARD,10));
-        restoreDraft.setTextColor(GREEN); restoreDraft.setBackground(outline(CARD,10));
-        draftActions.addView(saveDraft,new LinearLayout.LayoutParams(0,dp(36),1));
-        LinearLayout.LayoutParams rdlp=new LinearLayout.LayoutParams(0,dp(36),1); rdlp.setMargins(dp(6),0,0,0);
-        draftActions.addView(restoreDraft,rdlp);
-        content.addView(draftActions,new LinearLayout.LayoutParams(-1,dp(38)));
-        addSpace(4);
-
-        saveDraft.setOnClickListener(v->saveInvoiceDraft(no.getText().toString(),customer.getText().toString(),paid.getText().toString(),lines));
-
         TextView customerBalance=tv("رصيد العميل: 0 ريال",11.5f);
         customerBalance.setTextColor(GREEN); customerBalance.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);
         customerBalance.setPadding(dp(10),dp(4),dp(10),dp(4));
@@ -987,7 +970,6 @@ public class MainActivity extends Activity {
             }
         };
 
-        restoreDraft.setOnClickListener(v->restoreInvoiceDraft(no,customer,paid,lines,redraw[0]));
         add.setOnClickListener(v->{
             try{
                 double t=Double.parseDouble(total.getText().toString().trim());
@@ -1002,11 +984,16 @@ public class MainActivity extends Activity {
             }
         });
 
-        Button clear=button("🧹 مسح جميع الأصناف");
-        clear.setTextColor(MUTED); clear.setBackground(outline(CARD,10));
-        clear.setTextSize(12);
-        content.addView(clear,new LinearLayout.LayoutParams(-1,dp(36)));
-        clear.setOnClickListener(v->{
+        fSave.setOnClickListener(v->{
+            if(lines.isEmpty()){Toast.makeText(this,"أضف صنفاً واحداً على الأقل",Toast.LENGTH_SHORT).show();return;}
+            String cn=customer.getText().toString().trim();
+            if(cn.isEmpty()){Toast.makeText(this,"اكتب اسم العميل، أو اتركه للفاتورة النقدية",Toast.LENGTH_SHORT).show();return;}
+            String knownPhone=db.phoneByName(cn).trim();
+            if(!knownPhone.isEmpty()) saveInvoice(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),knownPhone,edit,invoiceId);
+            else showPhoneDialog(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),edit,invoiceId);
+        });
+        fPrint.setOnClickListener(v->preview(no.getText().toString(),customer.getText().toString(),lines,totalOf(lines),edit,invoiceId));
+        fClear.setOnClickListener(v->{
             if(!lines.isEmpty()){
                 new AlertDialog.Builder(this)
                     .setTitle("مسح الأصناف")
@@ -1015,33 +1002,8 @@ public class MainActivity extends Activity {
                     .setNegativeButton("إلغاء",null).show();
             }
         });
-        addSpace(6);
-
-        Button save=action(edit?"💾 حفظ تعديل الفاتورة":"💾 حفظ الفاتورة",GREEN);
-        save.setTextSize(14.5f);
-        content.addView(save,new LinearLayout.LayoutParams(-1,dp(44)));
-        addSpace(5);
-
-        Button print=button("🖨 طباعة مباشرة — بلوتوث 58mm");
-        print.setTextColor(GREEN); print.setBackground(outline(Color.rgb(240,248,242),12));
-        print.setTextSize(13);
-        content.addView(print,new LinearLayout.LayoutParams(-1,dp(40)));
-        addSpace(6);
-
-        fSave.setOnClickListener(v->save.performClick());
-        fPrint.setOnClickListener(v->print.performClick());
-        fClear.setOnClickListener(v->clear.performClick());
         content.setPadding(dp(6),dp(4),dp(6),dp(22));
 
-        save.setOnClickListener(v->{
-            if(lines.isEmpty()){Toast.makeText(this,"أضف صنفاً واحداً على الأقل",Toast.LENGTH_SHORT).show();return;}
-            String cn=customer.getText().toString().trim();
-            if(cn.isEmpty()){Toast.makeText(this,"اكتب اسم العميل، أو اتركه للفاتورة النقدية",Toast.LENGTH_SHORT).show();return;}
-            String knownPhone=db.phoneByName(cn).trim();
-            if(!knownPhone.isEmpty()) saveInvoice(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),knownPhone,edit,invoiceId);
-            else showPhoneDialog(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),edit,invoiceId);
-        });
-        print.setOnClickListener(v->preview(no.getText().toString(),customer.getText().toString(),lines,totalOf(lines),edit,invoiceId));
         item.setOnEditorActionListener((v,a,e)->{add.performClick();return true;});
         customer.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int b,int c){redraw[0].run();}public void afterTextChanged(android.text.Editable e){}});
         paid.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int b,int c){redraw[0].run();}public void afterTextChanged(android.text.Editable e){}});
@@ -2119,16 +2081,55 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams plp=new LinearLayout.LayoutParams(0,dp(38),1f); plp.setMargins(dp(4),0,0,0);
         row1.addView(printBtn,plp);
         actionsGrid.addView(row1,new LinearLayout.LayoutParams(-1,dp(40)));
+        addSpaceTo(actionsGrid,4);
+
+        LinearLayout row2=new LinearLayout(this);
+        row2.setOrientation(LinearLayout.HORIZONTAL);
+        row2.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+
+        Button editBtn=button("✏️ تعديل الفاتورة");
+        editBtn.setTextColor(GOLD); editBtn.setBackground(outline(CARD,10));
+        editBtn.setTextSize(12f);
+        editBtn.setOnClickListener(v->{
+            dlg.dismiss();
+            purchaseInvoiceForm(true,id);
+        });
+
+        Button delBtn=button("🗑️ حذف الفاتورة");
+        delBtn.setTextColor(RED); delBtn.setBackground(outline(CARD,10));
+        delBtn.setTextSize(12f);
+        delBtn.setOnClickListener(v->{
+            dlg.dismiss();
+            confirmDeletePurchaseInvoice(id,no);
+        });
+
+        row2.addView(editBtn,new LinearLayout.LayoutParams(0,dp(38),1.2f));
+        LinearLayout.LayoutParams dlp=new LinearLayout.LayoutParams(0,dp(38),1f); dlp.setMargins(dp(4),0,0,0);
+        row2.addView(delBtn,dlp);
+        actionsGrid.addView(row2,new LinearLayout.LayoutParams(-1,dp(40)));
 
         box.addView(actionsGrid,new LinearLayout.LayoutParams(-1,-2));
 
         dlg.setContentView(box);
         if(dlg.getWindow()!=null){
             dlg.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-            dlg.getWindow().setLayout(dp(340),dp(440));
+            dlg.getWindow().setLayout(dp(340),dp(480));
             dlg.getWindow().setGravity(Gravity.CENTER);
         }
         dlg.show();
+    }
+
+    void confirmDeletePurchaseInvoice(long id,String no){
+        new AlertDialog.Builder(this)
+            .setTitle("حذف فاتورة الشراء")
+            .setMessage("هل أنت تأكد من حذف فاتورة الشراء رقم #"+no+"؟ سيتم خصم الكميات المضافة من المخزون.")
+            .setPositiveButton("حذف",(d,w)->{
+                db.deletePurchase(id);
+                Toast.makeText(this,"تم حذف فاتورة الشراء وتعديل المخزون",Toast.LENGTH_SHORT).show();
+                purchaseInvoices();
+            })
+            .setNegativeButton("إلغاء",null)
+            .show();
     }
 
     void sharePurchaseInvoiceSms(long id,String no,String supplier,double total,String date){
@@ -4847,7 +4848,11 @@ public class MainActivity extends Activity {
     }
 
     void newPurchaseInvoice(){
-        base("فاتورة شراء جديدة",false);
+        purchaseInvoiceForm(false,0);
+    }
+
+    void purchaseInvoiceForm(boolean edit,long purchaseId){
+        base(edit?"تعديل فاتورة الشراء":"فاتورة شراء جديدة",false);
 
         // شريط سفلي ثابت لفاتورة الشراء
         bottom.removeAllViews();
@@ -4882,7 +4887,7 @@ public class MainActivity extends Activity {
         pButtons.setOrientation(LinearLayout.HORIZONTAL);
         pButtons.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
 
-        Button pSaveBtn=action("💾 حفظ فاتورة الشراء",GOLD);
+        Button pSaveBtn=action(edit?"💾 حفظ تعديل الفاتورة":"💾 حفظ فاتورة الشراء",GOLD);
         pSaveBtn.setTextSize(13.5f);
         pButtons.addView(pSaveBtn,new LinearLayout.LayoutParams(0,dp(44),1.5f));
 
@@ -4915,7 +4920,8 @@ public class MainActivity extends Activity {
         supplier.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_dropdown_item_1line,db.supplierNames()));
 
         EditText invoiceNo=field("رقم فاتورة الشراء");
-        invoiceNo.setText(String.valueOf(db.nextPurchaseNo())); invoiceNo.setTextSize(13);
+        invoiceNo.setText(edit?db.purchaseNo(purchaseId):String.valueOf(db.nextPurchaseNo())); invoiceNo.setTextSize(13);
+        if(edit) supplier.setText(db.purchaseSupplier(purchaseId));
 
         meta.addView(supplier,new LinearLayout.LayoutParams(0,dp(40),1.35f));
         LinearLayout.LayoutParams nlp=new LinearLayout.LayoutParams(0,dp(40),1f); nlp.setMargins(dp(6),0,0,0);
@@ -5035,6 +5041,8 @@ public class MainActivity extends Activity {
         addSpace(6);
 
         ArrayList<PurchaseLine> lines=new ArrayList<>();
+        if(edit && purchaseId>0) lines.addAll(loadPurchaseLines(purchaseId));
+
         final Runnable[] redraw={null};
         redraw[0]=()->{
             rows.removeAllViews();
@@ -5138,38 +5146,33 @@ public class MainActivity extends Activity {
             }
         });
 
-        Button clear=button("🧹 مسح أصناف الفاتورة");
-        clear.setTextColor(MUTED); clear.setBackground(outline(CARD,10));
-        clear.setTextSize(12);
-        content.addView(clear,new LinearLayout.LayoutParams(-1,dp(36)));
-        clear.setOnClickListener(v->{lines.clear(); redraw[0].run();});
-        addSpace(5);
-
-        Button save=action("💾 حفظ فاتورة الشراء",GOLD);
-        save.setTextSize(14);
-        content.addView(save,new LinearLayout.LayoutParams(-1,dp(44)));
-        addSpace(6);
-
-        pSaveBtn.setOnClickListener(v->save.performClick());
-        pClearBtn.setOnClickListener(v->clear.performClick());
-        content.setPadding(dp(6),dp(4),dp(6),dp(22));
-
-        save.setOnClickListener(v->{
+        pSaveBtn.setOnClickListener(v->{
             try{
                 String sn=supplier.getText().toString().trim(), no=invoiceNo.getText().toString().trim();
                 if(sn.isEmpty()||no.isEmpty()||lines.isEmpty())throw new Exception();
                 double sum=0; for(PurchaseLine l:lines)sum+=l.total;
                 db.supplier(sn,"");
-                long pid=db.addPurchase(no,sn,sum,db.now());
-                if(pid<=0)throw new Exception("تعذر حفظ الفاتورة");
-                db.replacePurchaseLines(pid,lines);
-                db.updateStockFromPurchase(lines);
-                Toast.makeText(this,"تم حفظ فاتورة الشراء وتحديث المخزون",Toast.LENGTH_SHORT).show();
-                showPostSavePurchaseActions(pid,no,sn,lines,sum,db.now());
+                if(edit && purchaseId>0){
+                    db.updatePurchase(purchaseId,no,sn,sum);
+                    db.revertStockFromPurchase(purchaseId);
+                    db.replacePurchaseLines(purchaseId,lines);
+                    db.updateStockFromPurchase(lines);
+                    Toast.makeText(this,"تم حفظ تعديل فاتورة الشراء وتحديث المخزون",Toast.LENGTH_SHORT).show();
+                    showPostSavePurchaseActions(purchaseId,no,sn,lines,sum,db.now());
+                }else{
+                    long pid=db.addPurchase(no,sn,sum,db.now());
+                    if(pid<=0)throw new Exception("تعذر حفظ الفاتورة");
+                    db.replacePurchaseLines(pid,lines);
+                    db.updateStockFromPurchase(lines);
+                    Toast.makeText(this,"تم حفظ فاتورة الشراء وتحديث المخزون",Toast.LENGTH_SHORT).show();
+                    showPostSavePurchaseActions(pid,no,sn,lines,sum,db.now());
+                }
             }catch(Exception e){
                 Toast.makeText(this,"تحقق من اسم المورد ورقم الفاتورة والأصناف",Toast.LENGTH_SHORT).show();
             }
         });
+        pClearBtn.setOnClickListener(v->{lines.clear(); redraw[0].run();});
+        content.setPadding(dp(6),dp(4),dp(6),dp(22));
 
         redraw[0].run();
     }
@@ -6472,6 +6475,28 @@ public class MainActivity extends Activity {
         String invoiceCompactDetails(String no){Cursor c=getReadableDatabase().rawQuery("SELECT name,qty,total FROM invoice_items WHERE invoice_id=(SELECT id FROM invoices WHERE no=? ORDER BY id DESC LIMIT 1) ORDER BY id",new String[]{no});StringBuilder s=new StringBuilder("تفاصيل: ");int n=0;while(c.moveToNext()&&n<6){if(n>0)s.append(" • ");s.append(c.getString(0)).append(" × ").append(fmt(c.getDouble(1))).append(" = ").append(fmt(c.getDouble(2)));n++;}c.close();return n==0?"تفاصيل الفاتورة غير متاحة":s.toString();}
         Cursor purchaseLines(long id){return getReadableDatabase().rawQuery("SELECT id,name,qty,cost,sale,total FROM purchase_items WHERE purchase_id=? ORDER BY id",new String[]{String.valueOf(id)});}
         String purchaseSupplier(long id){Cursor c=getReadableDatabase().rawQuery("SELECT COALESCE(supplier,'') FROM purchase_invoices WHERE id=?",new String[]{String.valueOf(id)});String x=c.moveToFirst()?c.getString(0):"";c.close();return x==null?"":x;}
+        String purchaseNo(long id){Cursor c=getReadableDatabase().rawQuery("SELECT COALESCE(no,'') FROM purchase_invoices WHERE id=?",new String[]{String.valueOf(id)});String x=c.moveToFirst()?c.getString(0):"";c.close();return x==null?"":x;}
+        void updatePurchase(long id,String no,String supplier,double total){ContentValues v=new ContentValues();v.put("no",no);v.put("supplier",supplier);v.put("total",total);getWritableDatabase().update("purchase_invoices",v,"id=?",new String[]{String.valueOf(id)});}
+        void revertStockFromPurchase(long purchaseId){
+            SQLiteDatabase d=getWritableDatabase();
+            Cursor c=d.rawQuery("SELECT name,qty FROM purchase_items WHERE purchase_id=?",new String[]{String.valueOf(purchaseId)});
+            while(c.moveToNext()){
+                String name=c.getString(0);
+                double q=c.getDouble(1);
+                Cursor ic=d.rawQuery("SELECT id,qty FROM items WHERE name=? LIMIT 1",new String[]{name});
+                if(ic.moveToFirst()){
+                    long iid=ic.getLong(0);
+                    double currentQ=ic.getDouble(1);
+                    ContentValues v=new ContentValues();
+                    v.put("qty",Math.max(0,currentQ-q));
+                    d.update("items",v,"id=?",new String[]{String.valueOf(iid)});
+                }
+                ic.close();
+            }
+            c.close();
+            d.delete("purchase_items","purchase_id=?",new String[]{String.valueOf(purchaseId)});
+        }
+        void deletePurchase(long id){if(id<=0)return;revertStockFromPurchase(id);getWritableDatabase().delete("purchase_invoices","id=?",new String[]{String.valueOf(id)});}
         String supplierPhoneByName(String n){Cursor c=getReadableDatabase().rawQuery("SELECT COALESCE(phone,'') FROM suppliers WHERE name=? ORDER BY id DESC LIMIT 1",new String[]{n==null?"":n});String x=c.moveToFirst()?c.getString(0):"";c.close();return x==null?"":x;}
         Cursor invoices(){return getReadableDatabase().rawQuery("SELECT id,no,customer,total,date FROM invoices ORDER BY datetime(date) DESC, id DESC LIMIT 100",null);}
         Cursor recentActivity(){
