@@ -1078,10 +1078,13 @@ public class MainActivity extends Activity {
         fSave.setOnClickListener(v->{
             if(lines.isEmpty()){Toast.makeText(this,"أضف صنفاً واحداً على الأقل",Toast.LENGTH_SHORT).show();return;}
             String cn=customer.getText().toString().trim();
-            if(cn.isEmpty()){Toast.makeText(this,"اكتب اسم العميل، أو اتركه للفاتورة النقدية",Toast.LENGTH_SHORT).show();return;}
+            // السماح بالفاتورة النقدية بدون إنشاء حساب عميل.
+            if(cn.isEmpty() || "نقدي".equals(cn) || "عميل نقدي".equals(cn)){
+                saveInvoice("نقدي",no.getText().toString(),lines,totalOf(lines),parsePaid(paid),"",edit,invoiceId);
+                return;
+            }
             String knownPhone=db.phoneByName(cn).trim();
-            if(cn.isEmpty() || "نقدي".equals(cn) || "عميل نقدي".equals(cn)) saveInvoice(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),"",edit,invoiceId);
-            else if(!knownPhone.isEmpty()) saveInvoice(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),knownPhone,edit,invoiceId);
+            if(!knownPhone.isEmpty()) saveInvoice(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),knownPhone,edit,invoiceId);
             else showPhoneDialog(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),edit,invoiceId);
         });
         fPrint.setOnClickListener(v->preview(no.getText().toString(),customer.getText().toString(),lines,totalOf(lines),edit,invoiceId));
