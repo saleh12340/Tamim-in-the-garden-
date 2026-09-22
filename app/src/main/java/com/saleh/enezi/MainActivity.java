@@ -218,7 +218,7 @@ public class MainActivity extends Activity {
             tlp.setMargins(dp(2),0,dp(2),0);
             nav.addView(tab,tlp);
         }
-        bottom.addView(nav,new LinearLayout.LayoutParams(-1,dp(50)));
+        bottom.addView(nav,new LinearLayout.LayoutParams(-1,dp(56)));
     }
     void navigate(String n){hideKeyboard(); if(n.equals("الرئيسية"))home();else if(n.equals("العملاء")||n.equals("الحسابات"))customers();else if(n.equals("الفواتير"))invoice();else if(n.equals("فواتير الشراء"))purchaseInvoices();else if(n.equals("المخزون"))inventory();else if(n.equals("ماسح الفواتير")||n.equals("الماسح الضوئي"))scanner();else reports();}
     void importContact(){
