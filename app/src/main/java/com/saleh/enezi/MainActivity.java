@@ -194,13 +194,13 @@ public class MainActivity extends Activity {
             }
             TextView iconTv=new TextView(this);
             iconTv.setText(icons[i]);
-            iconTv.setTextSize(15);
+            iconTv.setTextSize(18);
             iconTv.setGravity(Gravity.CENTER);
             tab.addView(iconTv,new LinearLayout.LayoutParams(-1,-2));
 
             TextView labelTv=new TextView(this);
             labelTv.setText(labels[i]);
-            labelTv.setTextSize(9f);
+            labelTv.setTextSize(10f);
             labelTv.setGravity(Gravity.CENTER);
             labelTv.setTextColor(isActive ? GREEN : Color.rgb(115,125,120));
             if(isActive) labelTv.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
@@ -214,7 +214,7 @@ public class MainActivity extends Activity {
                 else if(idx==3) purchaseInvoices();
                 else if(idx==4) inventory();
             });
-            LinearLayout.LayoutParams tlp=new LinearLayout.LayoutParams(0,dp(48),1);
+            LinearLayout.LayoutParams tlp=new LinearLayout.LayoutParams(0,dp(54),1);
             tlp.setMargins(dp(2),0,dp(2),0);
             nav.addView(tab,tlp);
         }
