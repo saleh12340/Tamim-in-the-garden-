@@ -1359,7 +1359,7 @@ public class MainActivity extends Activity {
         if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);dialog.getWindow().setLayout(dp(330),WindowManager.LayoutParams.WRAP_CONTENT);dialog.getWindow().setGravity(Gravity.CENTER);}
     }
 
-    void showPostSaveActions(String no,String customer,ArrayList<Line> lines,double total,long cid,double paid){
+    void showPostSaveActions(String no,String customer,ArrayList<Line> lines,double total,long cid,double paid,String stockWarning){
         String status=paid>=total?"مسددة":(paid>0?"متبقي "+fmt(total-paid)+" ريال":"غير مسددة");
         int statusColor=paid>=total?BLUE:RED;
         final Dialog dialog=new Dialog(this);
@@ -1374,6 +1374,12 @@ public class MainActivity extends Activity {
         if(cid>0){
             TextView bal=tv("الرصيد بعد الفاتورة: "+balanceText(currentBalance),12);bal.setTextColor(balanceColor(currentBalance));bal.setGravity(Gravity.CENTER);
             box.addView(bal,new LinearLayout.LayoutParams(-1,dp(28)));
+        }
+        if(stockWarning!=null&&!stockWarning.trim().isEmpty()){
+            TextView warn=tv("⚠️ تنبيه المخزون\n"+stockWarning,11.5f);
+            warn.setTextColor(RED);warn.setGravity(Gravity.CENTER);warn.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+            warn.setBackground(outline(Color.rgb(255,246,236),8));
+            box.addView(warn,new LinearLayout.LayoutParams(-1,dp(58)));addSpaceTo(box,5);
         }
 
         LinearLayout actions1=new LinearLayout(this);actions1.setOrientation(LinearLayout.HORIZONTAL);actions1.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
@@ -4562,7 +4568,7 @@ public class MainActivity extends Activity {
                 account(id,name); // refresh whole screen including hero cards
                 showPostSaveOperation("تم حفظ العملية بنجاح",
                     "العميل: "+name+"\nالمبلغ: "+(txType==1?"عليه ":"له ")+fmt(a)+" ريال\nالرصيد الحالي: "+balanceText(db.balance(id)),
-                    ()->shareOperation(name,d,a,txType,""),
+                    ()->shareOperationImage(name,d,a,txType,""),
                     ()->{}
                 );
             }catch(Exception e){
