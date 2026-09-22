@@ -1080,7 +1080,8 @@ public class MainActivity extends Activity {
             String cn=customer.getText().toString().trim();
             if(cn.isEmpty()){Toast.makeText(this,"اكتب اسم العميل، أو اتركه للفاتورة النقدية",Toast.LENGTH_SHORT).show();return;}
             String knownPhone=db.phoneByName(cn).trim();
-            if(!knownPhone.isEmpty()) saveInvoice(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),knownPhone,edit,invoiceId);
+            if(cn.isEmpty() || "نقدي".equals(cn) || "عميل نقدي".equals(cn)) saveInvoice(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),"",edit,invoiceId);
+            else if(!knownPhone.isEmpty()) saveInvoice(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),knownPhone,edit,invoiceId);
             else showPhoneDialog(cn,no.getText().toString(),lines,totalOf(lines),parsePaid(paid),edit,invoiceId);
         });
         fPrint.setOnClickListener(v->preview(no.getText().toString(),customer.getText().toString(),lines,totalOf(lines),edit,invoiceId));
@@ -1117,26 +1118,42 @@ public class MainActivity extends Activity {
             }).setNegativeButton("إلغاء",null).show();
     }
     void saveInvoice(String name,String no,ArrayList<Line> lines,double total,double paid,String phone,boolean edit,long oldId){
-        if(name==null||name.trim().isEmpty()){Toast.makeText(this,"اختر العميل أو اترك الفاتورة نقدية.",Toast.LENGTH_SHORT).show();return;}
-        if(paid<0){Toast.makeText(this,"المبلغ المدفوع غير صحيح.",Toast.LENGTH_SHORT).show();return;}
-        long cid=db.customer(name,phone); String date=db.now();
-        if(edit){
-            String oldNo=db.invoiceNo(oldId);
-            db.deleteInvoiceTransactions(oldNo);
-            db.updateInvoice(oldId,no,name,total,paid,date);
-            db.replaceInvoiceLines(oldId,lines);
-        }else{
-            long id=db.addInvoice(no,name,total,paid,date);
-            db.replaceInvoiceLines(id,lines);
+        String customerName=(name==null?"":name.trim());
+        boolean cashCustomer=customerName.isEmpty() || "نقدي".equals(customerName) || "عميل نقدي".equals(customerName);
+        if(paid<0 || total<0){Toast.makeText(this,"بيانات الفاتورة غير صحيحة.",Toast.LENGTH_SHORT).show();return;}
+        if(lines==null||lines.isEmpty()){Toast.makeText(this,"أضف صنفاً واحداً على الأقل.",Toast.LENGTH_SHORT).show();return;}
+        if(!db.canApplySaleStock(lines,edit?oldId:-1)){
+            Toast.makeText(this,"لا يمكن حفظ الفاتورة: توجد كمية غير متوفرة في المخزون.",Toast.LENGTH_LONG).show();
+            return;
         }
-        // القيد المحاسبي الصحيح: الفاتورة تزيد ما على العميل، والدفع ينقصه.
-        // إذا زاد الدفع عن قيمة الفاتورة، يتحول الفرق تلقائياً إلى رصيد للعميل.
-        if(total>0) db.addTransactionOnce(cid,total,"فاتورة مبيعات رقم "+no,date);
-        if(paid>0) db.addPaymentTransaction(cid,paid,"دفعة فاتورة رقم "+no,date);
-        cacheLastInvoice(no,name,lines,total,date);
-        clearInvoiceDraft();
-        saveReceiptImage(no,name,lines,total);
-        showPostSaveActions(no,name,lines,total,cid,paid);
+        String storedCustomer=cashCustomer?"نقدي":customerName;
+        long cid=cashCustomer?-1:db.customer(storedCustomer,phone==null?"":phone);
+        String date=db.now();
+        try{
+            if(edit && oldId>0) db.revertStockFromInvoice(oldId);
+            if(edit){
+                String oldNo=db.invoiceNo(oldId);
+                db.deleteInvoiceTransactions(oldNo);
+                db.updateInvoice(oldId,no,storedCustomer,total,paid,date);
+                db.replaceInvoiceLines(oldId,lines);
+                if(!db.applyStockFromSale(lines,oldId)) throw new Exception("stock");
+            }else{
+                long id=db.addInvoice(no,storedCustomer,total,paid,date);
+                if(id<=0) throw new Exception("invoice");
+                db.replaceInvoiceLines(id,lines);
+                if(!db.applyStockFromSale(lines,id)) throw new Exception("stock");
+            }
+            if(!cashCustomer){
+                if(total>0) db.addTransactionOnce(cid,total,"فاتورة مبيعات رقم "+no,date);
+                if(paid>0) db.addPaymentTransaction(cid,paid,"دفعة فاتورة رقم "+no,date);
+            }
+            cacheLastInvoice(no,storedCustomer,lines,total,date);
+            clearInvoiceDraft();
+            saveReceiptImage(no,storedCustomer,lines,total);
+            showPostSaveActions(no,storedCustomer,lines,total,cid,paid);
+        }catch(Exception ex){
+            Toast.makeText(this,"تعذر حفظ الفاتورة بالكامل. لم يتم اعتماد العملية.",Toast.LENGTH_LONG).show();
+        }
     }
     
     void cacheLastInvoice(String no,String customer,ArrayList<Line> lines,double total,String date){
@@ -6955,7 +6972,7 @@ public class MainActivity extends Activity {
     }
 
     static class DB extends SQLiteOpenHelper{
-        DB(Context c){super(c,"enezi.db",null,11);}
+        DB(Context c){super(c,"enezi.db",null,12);}
         public void onCreate(SQLiteDatabase d){create(d);}
         void create(SQLiteDatabase d){
             d.execSQL("CREATE TABLE customers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,phone TEXT)");
@@ -6969,6 +6986,7 @@ public class MainActivity extends Activity {
             d.execSQL("CREATE TABLE IF NOT EXISTS note_pages(id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT,date TEXT)");
             d.execSQL("CREATE TABLE IF NOT EXISTS note_items(id INTEGER PRIMARY KEY AUTOINCREMENT,page_id INTEGER,side INTEGER,name TEXT,qty REAL,position INTEGER)");
             d.execSQL("CREATE TABLE IF NOT EXISTS scanned_invoices(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, file_name TEXT, category TEXT, notes TEXT, date TEXT, image_path TEXT)");
+            d.execSQL("CREATE TABLE IF NOT EXISTS stock_movements(id INTEGER PRIMARY KEY AUTOINCREMENT,item_id INTEGER,item_name TEXT,qty REAL,unit_cost REAL,source_type TEXT,source_id INTEGER,created_at TEXT)");
         }
         public void onUpgrade(SQLiteDatabase d,int o,int n){
             if(o<6){try{d.execSQL("ALTER TABLE customers ADD COLUMN phone TEXT");}catch(Exception ignored){}}
@@ -7065,6 +7083,81 @@ public class MainActivity extends Activity {
         long addPurchase(String no,String supplier,double total,String date){ContentValues v=new ContentValues();v.put("no",no);v.put("supplier",supplier);v.put("total",total);v.put("date",date);return getWritableDatabase().insert("purchase_invoices",null,v);}
         void replacePurchaseLines(long id,ArrayList<PurchaseLine> ls){SQLiteDatabase d=getWritableDatabase();for(PurchaseLine l:ls){ContentValues v=new ContentValues();v.put("purchase_id",id);v.put("name",l.name);v.put("qty",l.qty);v.put("cost",l.cost);v.put("sale",l.sale);v.put("total",l.total);d.insert("purchase_items",null,v);}}
         void updateStockFromPurchase(ArrayList<PurchaseLine> ls){SQLiteDatabase d=getWritableDatabase();for(PurchaseLine l:ls){Cursor c=d.rawQuery("SELECT id,qty FROM items WHERE name=? LIMIT 1",new String[]{l.name});if(c.moveToFirst()){long id=c.getLong(0);double q=c.getDouble(1);c.close();ContentValues v=new ContentValues();v.put("qty",q+l.qty);v.put("cost",l.cost);v.put("sale",l.sale);d.update("items",v,"id=?",new String[]{String.valueOf(id)});}else{c.close();ContentValues v=new ContentValues();v.put("name",l.name);v.put("qty",l.qty);v.put("min_qty",0);v.put("cost",l.cost);v.put("sale",l.sale);d.insert("items",null,v);}}}
+        boolean canApplySaleStock(ArrayList<Line> ls,long oldInvoiceId){
+            SQLiteDatabase d=getReadableDatabase();
+            HashMap<String,Double> needed=new HashMap<>();
+            if(oldInvoiceId>0){
+                Cursor old=d.rawQuery("SELECT name,qty FROM invoice_items WHERE invoice_id=?",new String[]{String.valueOf(oldInvoiceId)});
+                while(old.moveToNext()){
+                    String n=old.getString(0)==null?"":old.getString(0).trim().toLowerCase(Locale.ROOT);
+                    if(!n.isEmpty()) needed.put(n,needed.getOrDefault(n,0.0)-old.getDouble(1));
+                }
+                old.close();
+            }
+            if(ls!=null) for(Line l:ls){
+                String n=l.name==null?"":l.name.trim().toLowerCase(Locale.ROOT);
+                if(!n.isEmpty()) needed.put(n,needed.getOrDefault(n,0.0)+Math.max(0,l.qty));
+            }
+            for(Map.Entry<String,Double> e:needed.entrySet()){
+                if(e.getValue()<=0) continue;
+                Cursor c=d.rawQuery("SELECT COALESCE(qty,0) FROM items WHERE lower(trim(name))=? LIMIT 1",new String[]{e.getKey()});
+                double stock=c.moveToFirst()?c.getDouble(0):0; c.close();
+                if(stock+0.0001<e.getValue()) return false;
+            }
+            return true;
+        }
+        void revertStockFromInvoice(long invoiceId){
+            if(invoiceId<=0)return;
+            SQLiteDatabase d=getWritableDatabase();
+            d.beginTransaction();
+            Cursor c=null;
+            try{
+                c=d.rawQuery("SELECT name,qty FROM invoice_items WHERE invoice_id=?",new String[]{String.valueOf(invoiceId)});
+                while(c.moveToNext()){
+                    String name=c.getString(0)==null?"":c.getString(0).trim();
+                    double q=c.getDouble(1);
+                    if(name.isEmpty()||q<=0)continue;
+                    Cursor ic=d.rawQuery("SELECT id,qty FROM items WHERE lower(trim(name))=? LIMIT 1",new String[]{name.toLowerCase(Locale.ROOT)});
+                    if(ic.moveToFirst()){
+                        long iid=ic.getLong(0); double current=ic.getDouble(1);
+                        ContentValues v=new ContentValues(); v.put("qty",current+q);
+                        d.update("items",v,"id=?",new String[]{String.valueOf(iid)});
+                        ContentValues mv=new ContentValues(); mv.put("item_id",iid); mv.put("item_name",name); mv.put("qty",q); mv.put("source_type","sale_reversal"); mv.put("source_id",invoiceId); mv.put("created_at",now());
+                        d.insert("stock_movements",null,mv);
+                    }
+                    ic.close();
+                }
+                d.setTransactionSuccessful();
+            }finally{
+                if(c!=null)c.close();
+                d.endTransaction();
+            }
+        }
+        boolean applyStockFromSale(ArrayList<Line> ls,long invoiceId){
+            if(ls==null||ls.isEmpty())return true;
+            SQLiteDatabase d=getWritableDatabase();
+            d.beginTransaction();
+            Cursor c=null;
+            try{
+                for(Line l:ls){
+                    String name=l.name==null?"":l.name.trim(); double q=Math.max(0,l.qty);
+                    if(name.isEmpty()||q<=0)continue;
+                    c=d.rawQuery("SELECT id,qty FROM items WHERE lower(trim(name))=? LIMIT 1",new String[]{name.toLowerCase(Locale.ROOT)});
+                    if(!c.moveToFirst()){c.close();c=null;continue;}
+                    long iid=c.getLong(0); double current=c.getDouble(1); c.close(); c=null;
+                    if(current+0.0001<q) return false;
+                    ContentValues v=new ContentValues(); v.put("qty",current-q);
+                    d.update("items",v,"id=?",new String[]{String.valueOf(iid)});
+                    ContentValues mv=new ContentValues(); mv.put("item_id",iid); mv.put("item_name",name); mv.put("qty",-q); mv.put("unit_cost",itemCostPrice(name)); mv.put("source_type","sale"); mv.put("source_id",invoiceId); mv.put("created_at",now());
+                    d.insert("stock_movements",null,mv);
+                }
+                d.setTransactionSuccessful();
+                return true;
+            }finally{
+                if(c!=null)c.close();
+                d.endTransaction();
+            }
+        }
         String[] itemNames(){Cursor c=getReadableDatabase().rawQuery("SELECT name FROM items ORDER BY name",null);ArrayList<String>a=new ArrayList<>();while(c.moveToNext())a.add(c.getString(0));c.close();return a.toArray(new String[0]);}
         double itemSalePrice(String n){if(n==null||n.trim().isEmpty())return 0;Cursor c=getReadableDatabase().rawQuery("SELECT COALESCE(sale,0) FROM items WHERE name=? LIMIT 1",new String[]{n.trim()});double p=c.moveToFirst()?c.getDouble(0):0;c.close();return p;}
         double itemCostPrice(String n){if(n==null||n.trim().isEmpty())return 0;Cursor c=getReadableDatabase().rawQuery("SELECT COALESCE(cost,0) FROM items WHERE name=? LIMIT 1",new String[]{n.trim()});double p=c.moveToFirst()?c.getDouble(0):0;c.close();return p;}
@@ -7229,7 +7322,16 @@ public class MainActivity extends Activity {
         void updateInvoice(long id,String no,String customer,double total,double paid,String date){ContentValues v=new ContentValues();v.put("no",no);v.put("customer",customer);v.put("total",total);v.put("paid",paid);v.put("date",date);getWritableDatabase().update("invoices",v,"id=?",new String[]{String.valueOf(id)});}
         Cursor invoiceLines(long id){return getReadableDatabase().rawQuery("SELECT id,name,qty,total FROM invoice_items WHERE invoice_id=? ORDER BY id",new String[]{String.valueOf(id)});}
         void replaceInvoiceLines(long id,ArrayList<Line> ls){SQLiteDatabase d=getWritableDatabase();d.delete("invoice_items","invoice_id=?",new String[]{String.valueOf(id)});for(Line l:ls){ContentValues v=new ContentValues();v.put("invoice_id",id);v.put("name",l.name);v.put("qty",l.qty);v.put("total",l.total);d.insert("invoice_items",null,v);}}
-        void deleteInvoice(long id){String no=invoiceNo(id);deleteInvoiceTransactions(no);SQLiteDatabase d=getWritableDatabase();d.delete("invoice_items","invoice_id=?",new String[]{String.valueOf(id)});d.delete("invoices","id=?",new String[]{String.valueOf(id)});}
+        void deleteInvoice(long id){
+            if(id<=0)return;
+            String no=invoiceNo(id);
+            revertStockFromInvoice(id);
+            deleteInvoiceTransactions(no);
+            SQLiteDatabase d=getWritableDatabase();
+            d.delete("invoice_items","invoice_id=?",new String[]{String.valueOf(id)});
+            d.delete("invoices","id=?",new String[]{String.valueOf(id)});
+            d.delete("stock_movements","source_id=? AND source_type IN ('sale','sale_reversal')",new String[]{String.valueOf(id)});
+        }
         void deleteInvoiceTransaction(String no){deleteInvoiceTransactions(no);}
         void deleteInvoiceTransactions(String no){
             SQLiteDatabase d=getWritableDatabase();
