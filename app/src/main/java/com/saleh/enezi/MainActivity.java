@@ -5172,7 +5172,6 @@ public class MainActivity extends Activity {
         });
 
         redraw[0].run();
-        calc.run();
     }
 
     static class PurchaseLine{String name;double qty,cost,sale,total;PurchaseLine(String n,double q,double c,double s,double t){name=n;qty=q;cost=c;sale=s;total=t;}}
