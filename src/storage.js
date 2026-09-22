@@ -2,7 +2,7 @@ const STORAGE_KEY = 'enezi_grocery_v2';
 const DRAFT_KEY = 'enezi_invoice_draft';
 
 const initialStoreInfo = {
-  name: 'بقالة العنزي للمواد الغذائية',
+  name: 'بقالة العزي للمواد الغذائية',
   phone: '776425052',
   subtitle: 'نظام الفواتير والحسابات والمخزون',
   address: 'اليمن',
