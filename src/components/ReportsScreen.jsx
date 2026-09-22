@@ -7,7 +7,15 @@ export default function ReportsScreen({ data, storeInfo, showToast }) {
 
   const totalSales = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
   const totalPurchases = purchases.reduce((sum, p) => sum + (p.total || 0), 0);
-  const grossProfit = totalSales - totalPurchases;
+  // Profit is based on the cost of items actually sold, not all purchases made in the period.
+  const costOfGoodsSold = invoices.reduce(
+    (sum, inv) => sum + (inv.items || []).reduce(
+      (itemSum, item) => itemSum + ((Number(item.cost) || 0) * (Number(item.qty) || 0)),
+      0
+    ),
+    0
+  );
+  const grossProfit = totalSales - costOfGoodsSold;
   const totalDebts = customers.reduce((sum, c) => sum + (c.balance > 0 ? c.balance : 0), 0);
   const totalPaidCash = invoices.reduce((sum, inv) => sum + (inv.paid || 0), 0);
   const totalCreditRemaining = invoices.reduce((sum, inv) => sum + (inv.remaining || 0), 0);
@@ -64,11 +72,11 @@ export default function ReportsScreen({ data, storeInfo, showToast }) {
         </div>
 
         <div className="card" style={{ borderTop: '4px solid #d97706' }}>
-          <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>الأرباح التقديرية (المبيعات - المشتريات)</div>
+          <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>الربح الإجمالي التقديري (المبيعات - تكلفة البضاعة المباعة)</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 900, color: grossProfit >= 0 ? '#15803d' : '#b91c1c', margin: '4px 0' }}>
             {formatNumber(grossProfit)} <small style={{ fontSize: '0.85rem' }}>{storeInfo?.currency || 'ريال'}</small>
           </div>
-          <div style={{ fontSize: '0.76rem', color: '#64748b' }}>هامش ربحي تقديري مباشر</div>
+          <div style={{ fontSize: '0.76rem', color: '#64748b' }}>المبيعات ناقص تكلفة الأصناف المباعة</div>
         </div>
 
         <div className="card" style={{ borderTop: '4px solid #b91c1c' }}>
