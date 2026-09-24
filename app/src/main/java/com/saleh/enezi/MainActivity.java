@@ -56,7 +56,46 @@ public class MainActivity extends Activity {
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         getWindow().setStatusBarColor(DARK);
         getWindow().setNavigationBarColor(DARK);
-        db=new DB(this); BackupReceiver.schedule(this); AppStorage.initializeAllDirectories(this); home();
+
+        // افتح قاعدة البيانات أولاً وبشكل آمن. إذا كانت قاعدة قديمة/تالفة وتسببت
+        // في انهيار شاشة البداية، نحفظ الملف القديم ثم ننشئ قاعدة سليمة بدلاً من
+        // إنهاء التطبيق مباشرة.
+        try{
+            db=new DB(this);
+            db.getReadableDatabase();
+        }catch(Exception firstDbError){
+            try{ if(db!=null) db.close(); }catch(Exception ignored){}
+            try{
+                File oldDb=getDatabasePath("enezi.db");
+                if(oldDb.exists()){
+                    File backup=new File(getFilesDir(),"enezi_startup_recovery_"+System.currentTimeMillis()+".db");
+                    try(InputStream in=new java.io.FileInputStream(oldDb);
+                        OutputStream out=new java.io.FileOutputStream(backup)){
+                        byte[] buf=new byte[16384];
+                        int n;
+                        while((n=in.read(buf))>0) out.write(buf,0,n);
+                        out.flush();
+                    }catch(Exception ignored){}
+                }
+                try{ deleteDatabase("enezi.db"); }catch(Exception ignored){}
+                try{ new File(getDatabasePath("enezi.db").getPath()+"-wal").delete(); }catch(Exception ignored){}
+                try{ new File(getDatabasePath("enezi.db").getPath()+"-shm").delete(); }catch(Exception ignored){}
+                db=new DB(this);
+                db.getWritableDatabase();
+                Toast.makeText(this,"تم إصلاح قاعدة البيانات لبدء التطبيق بأمان.",Toast.LENGTH_LONG).show();
+            }catch(Exception fatalDbError){
+                Toast.makeText(this,"تعذر فتح قاعدة البيانات. يرجى إعادة فتح التطبيق.",Toast.LENGTH_LONG).show();
+                finish();
+                return;
+            }
+        }
+
+        // لا نجعل النسخ الاحتياطي والمجلدات العامة سبباً في منع تشغيل الواجهة.
+        home();
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            try{ BackupReceiver.schedule(this); }catch(Exception ignored){}
+            try{ AppStorage.initializeAllDirectories(this); }catch(Exception ignored){}
+        },300);
     }
 
     void confirmExit(){
